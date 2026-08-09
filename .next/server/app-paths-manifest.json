@@ -1,0 +1,14 @@
+{
+  "/api/requests/route": "app/api/requests/route.js",
+  "/api/notifications/route": "app/api/notifications/route.js",
+  "/api/telemetry/route": "app/api/telemetry/route.js",
+  "/api/cms/route": "app/api/cms/route.js",
+  "/api/auth/me/route": "app/api/auth/me/route.js",
+  "/api/notifications/live/route": "app/api/notifications/live/route.js",
+  "/api/donors/route": "app/api/donors/route.js",
+  "/page": "app/page.js",
+  "/admin/page": "app/admin/page.js",
+  "/search/page": "app/search/page.js",
+  "/requests/page": "app/requests/page.js",
+  "/auth/page": "app/auth/page.js"
+}

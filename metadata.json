@@ -1,0 +1,6 @@
+{
+  "name": "DonateLife BD",
+  "description": "A production-ready blood donor platform for Bangladesh with donor search, emergency blood requests, location directory, hospital and blood bank directories, and admin panel.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

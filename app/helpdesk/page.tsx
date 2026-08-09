@@ -1,0 +1,22 @@
+'use client';
+
+import { Suspense } from 'react';
+import HelpdeskView from '@/src/views/HelpdeskView';
+import { useAppContext } from '@/src/providers';
+
+function HelpdeskContent() {
+  const { onNavigate } = useAppContext();
+  return <HelpdeskView onNavigate={onNavigate} />;
+}
+
+export default function HelpdeskPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center min-h-[50vh]">
+        <div className="w-10 h-10 border-4 border-rose-500/20 border-t-rose-500 rounded-full animate-spin" />
+      </div>
+    }>
+      <HelpdeskContent />
+    </Suspense>
+  );
+}

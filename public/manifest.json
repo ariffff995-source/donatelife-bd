@@ -1,0 +1,19 @@
+{
+  "short_name": "DonateLife BD",
+  "name": "DonateLife BD - Emergency Blood Network Bangladesh",
+  "description": "Find voluntary blood donors, emergency blood requests, hospitals, blood banks, and ambulance services across Bangladesh.",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "type": "image/svg+xml",
+      "sizes": "any 192x192 512x512",
+      "purpose": "any maskable"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#020617",
+  "theme_color": "#0f172a",
+  "display": "standalone",
+  "orientation": "portrait",
+  "categories": ["medical", "health", "lifestyle", "emergency"]
+}

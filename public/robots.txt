@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /admin
+
+# Host and Sitemap
+Host: https://donatelifebd.com
+Sitemap: https://donatelifebd.com/sitemap.xml
