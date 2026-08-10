@@ -9,10 +9,8 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@electric-sql/pglite": "^0.5.4",
     "@google/genai": "^2.4.0",
-    "@types/better-sqlite3": "^7.6.13",
-    "better-sqlite3": "^13.0.2",
+    "@supabase/supabase-js": "^2.112.2",
     "dotenv": "^17.2.3",
     "drizzle-orm": "^0.45.2",
     "firebase": "^12.15.0",
@@ -22,7 +20,7 @@
     "next": "^15.5.22",
     "nodemailer": "^9.0.3",
     "pg": "^8.22.0",
-    "pg-mem": "^3.0.14",
+    "postgres": "^3.4.9",
     "react": "^19.0.1",
     "react-dom": "^19.0.1"
   },
