@@ -76,6 +76,28 @@ export default function SeoHead({ activeTab, customTitle, customDescription }: S
         ];
         break;
 
+      case 'donors':
+        title = language === 'bn'
+          ? 'সকল রক্তদাতা ডিরেক্টরি | DonateLife BD'
+          : 'All Donors Directory | Verified Blood Donors Bangladesh | DonateLife BD';
+        description = language === 'bn'
+          ? 'বাংলাদেশের নিবন্ধিত ও সকল যাচাইকৃত রক্তদাতাদের পাবলিক তালিকা। নাম, ডোনার আইডি ও জেলা অনুযায়ী খুঁজুন।'
+          : 'Browse verified volunteer blood donors across Bangladesh. Search by donor name, unique Donor ID (e.g. DBD-000001), or district with complete privacy protection.';
+        keywords = 'all blood donors, donor directory bangladesh, DBD donor id, volunteer blood donors';
+        path = '/donors';
+        jsonLd = [
+          organizationSchema,
+          {
+            '@context': 'https://schema.org',
+            '@type': 'BreadcrumbList',
+            'itemListElement': [
+              { '@type': 'ListItem', 'position': 1, 'name': 'Home', 'item': SITE_URL },
+              { '@type': 'ListItem', 'position': 2, 'name': 'All Donors', 'item': `${SITE_URL}/donors` }
+            ]
+          }
+        ];
+        break;
+
       case 'search':
         title = language === 'bn'
           ? 'রক্তদাতা খুঁজুন | ৮ বিভাগ ও ৬৪ জেলা | DonateLife BD'

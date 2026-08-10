@@ -8,6 +8,8 @@ import { User, Notification } from '../types';
 import { api } from '../lib/api';
 import { useLanguage } from '../contexts/LanguageContext';
 
+import { useAppContext } from '../providers';
+
 interface NavbarProps {
   currentUser: User | null;
   onLogout: () => void;
@@ -26,6 +28,7 @@ export default function Navbar({
   onMarkNotificationRead
 }: NavbarProps) {
   const { language, setLanguage, t } = useLanguage();
+  const { isFeatureHidden } = useAppContext();
   const [isOpen, setIsOpen] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [showNotifMenu, setShowNotifMenu] = useState(false);
@@ -82,14 +85,19 @@ export default function Navbar({
     }
   }, [isOpen]);
 
-  const navLinks = [
+  const rawNavLinks = [
     { id: 'home', labelKey: 'navbar.home' },
+    { id: 'donors', labelKey: 'navbar.allDonors' },
     { id: 'search', labelKey: 'navbar.findDonors' },
     { id: 'requests', labelKey: 'navbar.emergencyRequests' },
     { id: 'helpdesk', labelKey: 'navbar.helpdesk' },
-    { id: 'directories', labelKey: 'navbar.directories' },
-    { id: 'blog', labelKey: 'navbar.blogs' },
+    { id: 'hospitals', labelKey: 'navbar.hospitals', featureKey: 'hospitals' },
+    { id: 'blood-banks', labelKey: 'navbar.bloodBanks', featureKey: 'blood-banks' },
+    { id: 'ambulances', labelKey: 'navbar.ambulances', featureKey: 'ambulances' },
+    { id: 'blog', labelKey: 'navbar.blogs', featureKey: 'blog' },
   ];
+
+  const navLinks = rawNavLinks.filter(link => !link.featureKey || !isFeatureHidden(link.featureKey));
 
   const handleLinkClick = (tabId: string) => {
     setActiveTab(tabId);

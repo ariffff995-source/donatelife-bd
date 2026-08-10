@@ -18,7 +18,7 @@ import { getEnglishLocationValue } from '../utils/locationHelper';
 
 export default function DirectoryView() {
   const { language, t, translateLocation, formatLocation } = useLanguage();
-  const { currentUser, setCurrentUser } = useAppContext();
+  const { currentUser, setCurrentUser, isFeatureHidden } = useAppContext();
 
   // -------------------------------------------------------------
   // Section 1: Hospitals & Clinics State
@@ -419,6 +419,7 @@ export default function DirectoryView() {
       {/* ========================================================================= */}
       {/* SECTION 1: HOSPITALS & CLINICS                                            */}
       {/* ========================================================================= */}
+      {!isFeatureHidden('hospitals') && (
       <section id="hospitals-section" className="space-y-6 text-left">
         <div className="space-y-1">
           <h2 className="text-xl sm:text-2xl font-black text-slate-100 flex items-center gap-2.5">
@@ -553,10 +554,12 @@ export default function DirectoryView() {
           </div>
         )}
       </section>
+      )}
 
       {/* ========================================================================= */}
       {/* SECTION 2: BLOOD BANKS & STORAGE                                         */}
       {/* ========================================================================= */}
+      {!isFeatureHidden('blood-banks') && (
       <section id="bloodbanks-section" className="space-y-6 text-left pt-6 border-t border-slate-800/60">
         <div className="space-y-1">
           <h2 className="text-xl sm:text-2xl font-black text-slate-100 flex items-center gap-2.5">
@@ -705,10 +708,12 @@ export default function DirectoryView() {
           </div>
         )}
       </section>
+      )}
 
       {/* ========================================================================= */}
       {/* SECTION 3: AMBULANCE DIRECTORY                                            */}
       {/* ========================================================================= */}
+      {!isFeatureHidden('ambulances') && (
       <section id="ambulances-section" className="space-y-6 text-left pt-6 border-t border-slate-800/60">
         <div className="space-y-1">
           <h2 className="text-xl sm:text-2xl font-black text-slate-100 flex items-center gap-2.5">
@@ -1224,6 +1229,7 @@ export default function DirectoryView() {
           </div>
         )}
       </section>
+      )}
 
       {/* Map modal overlay */}
       {selectedLocation && (

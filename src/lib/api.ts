@@ -1,4 +1,4 @@
-import { BloodGroup, User, BloodRequest, Hospital, BloodBank, Notification, PlatformStats, TelemetryData, Ambulance, CMSContent, MediaAsset } from '../types';
+import { BloodGroup, User, BloodRequest, Hospital, BloodBank, Notification, PlatformStats, TelemetryData, Ambulance, CMSContent, MediaAsset, FeatureSetting, FeatureStatus } from '../types';
 
 const API_BASE = '/api';
 
@@ -220,20 +220,32 @@ export const api = {
   // Donors Operations
   donors: {
     search(filters: {
-      bloodGroup?: BloodGroup | '';
+      search?: string;
+      q?: string;
+      bloodGroup?: BloodGroup | '' | string;
       division?: string;
       district?: string;
       upazila?: string;
       fullAddress?: string;
       availableOnly?: boolean;
-    }, options?: { forceRefresh?: boolean }): Promise<User[]> {
+      verifiedOnly?: boolean;
+      public?: boolean;
+      page?: number;
+      limit?: number;
+    }, options?: { forceRefresh?: boolean }): Promise<any> {
       const params = new URLSearchParams();
+      const queryVal = filters.search || filters.q || '';
+      if (queryVal) params.append('q', queryVal);
       if (filters.bloodGroup) params.append('bloodGroup', filters.bloodGroup);
       if (filters.division) params.append('division', filters.division);
       if (filters.district) params.append('district', filters.district);
       if (filters.upazila) params.append('upazila', filters.upazila);
       if (filters.fullAddress) params.append('fullAddress', filters.fullAddress);
       if (filters.availableOnly) params.append('availableOnly', 'true');
+      if (filters.verifiedOnly) params.append('verifiedOnly', 'true');
+      if (filters.public) params.append('public', 'true');
+      if (filters.page) params.append('page', filters.page.toString());
+      if (filters.limit) params.append('limit', filters.limit.toString());
       if (options?.forceRefresh) params.append('_t', Date.now().toString());
       
       return request(`/donors?${params.toString()}`, {
@@ -426,6 +438,10 @@ export const api = {
 
     deleteBlog(id: string): Promise<{ success: boolean }> {
       return request(`/blogs/${id}`, { method: 'DELETE' });
+    },
+
+    manualSeed(): Promise<{ success: boolean; message: string }> {
+      return request('/admin/seed', { method: 'POST' });
     }
   },
 
@@ -520,6 +536,39 @@ export const api = {
     },
     toggleHideReview(id: string, reviewId: string): Promise<{ success: boolean; reviews: any[]; averageRating: string; totalReviews: number }> {
       return request(`/ambulances/${id}/reviews/${reviewId}/toggle-hide`, { method: 'PUT' });
+    }
+  },
+
+  // Notification Queue & Logs Admin Operations
+  notificationLogs: {
+    getLogs(): Promise<{ logs: any[]; stats: { total: number; totalSent: number; failedCount: number; pendingCount: number } }> {
+      return request('/admin/notifications/logs');
+    },
+    retryFailed(): Promise<{ message: string; result: { totalRetried: number; successful: number } }> {
+      return request('/admin/notifications/retry', { method: 'POST' });
+    }
+  },
+
+  // User Settings Operations
+  settings: {
+    get(): Promise<any> {
+      return request('/user/settings');
+    },
+    update(payload: any): Promise<any> {
+      return request('/user/settings', { method: 'PUT', body: JSON.stringify(payload) });
+    }
+  },
+
+  // Feature Settings Operations
+  featureSettings: {
+    getPublic(): Promise<{ success: boolean; data: FeatureSetting[]; map: Record<string, { enabled: boolean; maintenanceMode: boolean; status: FeatureStatus }> }> {
+      return request('/settings/features');
+    },
+    getAdmin(): Promise<{ success: boolean; data: FeatureSetting[] }> {
+      return request('/admin/settings/features');
+    },
+    updateAdmin(payload: { featureKey: string; status?: FeatureStatus; enabled?: boolean; maintenanceMode?: boolean }): Promise<{ success: boolean; data: FeatureSetting; message: string }> {
+      return request('/admin/settings/features', { method: 'PATCH', body: JSON.stringify(payload) });
     }
   }
 };

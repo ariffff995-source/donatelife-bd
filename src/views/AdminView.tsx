@@ -3,16 +3,17 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { api, setAdminToken, getAdminToken } from '../lib/api';
-import { User, BloodRequest, Hospital, BloodBank, PlatformStats, BlogPost, Ambulance } from '../types';
+import { User, BloodRequest, Hospital, BloodBank, PlatformStats, BlogPost, Ambulance, FeatureSetting, FeatureStatus } from '../types';
 import { 
   Shield, Users, Activity, Trash2, Edit, Plus, Heart, LogOut, Check, X, 
   Bell, Database, BookOpen, MapPin, Building, Key, AlertTriangle, Search, 
   CheckSquare, Award, Clock, FileText, Globe, Send, UserCheck, RefreshCw,
   Facebook, ExternalLink, Phone, Download, Upload, ShieldCheck, ShieldAlert,
-  CheckCircle2, XCircle, AlertCircle
+  CheckCircle2, XCircle, AlertCircle, Sliders, Droplet
 } from 'lucide-react';
 import { BANGLADESH_LOCATIONS } from '../data/bangladesh-locations';
 import { useLanguage } from '../contexts/LanguageContext';
+import { useAppContext } from '../providers';
 import CmsManager from '../components/CmsManager';
 import LocationSelector from '../components/LocationSelector';
 
@@ -49,8 +50,14 @@ export default function AdminView({ currentUser, allRequests, onRefreshRequests 
   const [loginError, setLoginError] = useState<string | null>(null);
   const [loginLoading, setLoginLoading] = useState(false);
 
+  const { refreshFeatureFlags } = useAppContext();
+
   // Panel state
-  const [activeTab, setActiveTab] = useState<'analytics' | 'donors' | 'requests' | 'verifications' | 'donor-verification' | 'hospitals' | 'blogs' | 'notifications' | 'logs' | 'cms' | 'ambulances'>('analytics');
+  const [activeTab, setActiveTab] = useState<'analytics' | 'donors' | 'requests' | 'verifications' | 'donor-verification' | 'hospitals' | 'blogs' | 'notifications' | 'logs' | 'cms' | 'ambulances' | 'features'>('analytics');
+  
+  // Feature management state
+  const [featureSettings, setFeatureSettings] = useState<FeatureSetting[]>([]);
+  const [updatingFeatureKey, setUpdatingFeatureKey] = useState<string | null>(null);
   
   // Manual donor verification states
   const [verifyingUser, setVerifyingUser] = useState<User | null>(null);
@@ -90,6 +97,12 @@ export default function AdminView({ currentUser, allRequests, onRefreshRequests 
   const [creatingBloodBank, setCreatingBloodBank] = useState(false);
   const [editingAmbulance, setEditingAmbulance] = useState<Ambulance | null>(null);
   const [creatingAmbulance, setCreatingAmbulance] = useState(false);
+
+  // Notification Queue & Logs State
+  const [notifLogs, setNotifLogs] = useState<any[]>([]);
+  const [notifStats, setNotifStats] = useState({ total: 0, totalSent: 0, failedCount: 0, pendingCount: 0 });
+  const [loadingLogs, setLoadingLogs] = useState(false);
+  const [retryingLogs, setRetryingLogs] = useState(false);
   
   // Blog Editor State
   const [editingBlog, setEditingBlog] = useState<BlogPost | null>(null);
@@ -173,6 +186,20 @@ export default function AdminView({ currentUser, allRequests, onRefreshRequests 
       } else if (activeTab === 'ambulances') {
         const ambList = await api.ambulances.list();
         setAmbulances(ambList || []);
+      } else if (activeTab === 'features') {
+        const featRes = await api.featureSettings.getAdmin();
+        setFeatureSettings(featRes?.data || []);
+      } else if (activeTab === 'notifications') {
+        setLoadingLogs(true);
+        try {
+          const logData = await api.notificationLogs.getLogs();
+          setNotifLogs(logData.logs || []);
+          setNotifStats(logData.stats || { total: 0, totalSent: 0, failedCount: 0, pendingCount: 0 });
+        } catch (lErr) {
+          console.error('Failed to load notification queue logs:', lErr);
+        } finally {
+          setLoadingLogs(false);
+        }
       }
     } catch (err: any) {
       setError(err.message || 'Database error occurred. Please refresh panel.');
@@ -181,8 +208,45 @@ export default function AdminView({ currentUser, allRequests, onRefreshRequests 
     }
   };
 
+  const handleUpdateFeatureStatus = async (featureKey: string, status: FeatureStatus) => {
+    if (session?.role !== 'super-admin') {
+      setError('Super Admin privileges are required to modify feature visibility settings.');
+      return;
+    }
+    setUpdatingFeatureKey(featureKey);
+    setError(null);
+    setSuccess(null);
+    try {
+      const res = await api.featureSettings.updateAdmin({ featureKey, status });
+      const updated = res.data;
+      setFeatureSettings(prev => prev.map(f => f.featureKey === featureKey ? updated : f));
+      await refreshFeatureFlags();
+      setSuccess(`Feature '${featureKey}' status updated to ${status}.`);
+    } catch (err: any) {
+      setError(err.message || `Failed to update feature status for '${featureKey}'.`);
+    } finally {
+      setUpdatingFeatureKey(null);
+    }
+  };
+
+  const handleRetryFailedLogs = async () => {
+    setRetryingLogs(true);
+    setError(null);
+    setSuccess(null);
+    try {
+      const res = await api.notificationLogs.retryFailed();
+      setSuccess(res.message);
+      refreshDatabase();
+    } catch (err: any) {
+      setError(err.message || 'Failed to retry notification queue.');
+    } finally {
+      setRetryingLogs(false);
+    }
+  };
+
   useEffect(() => {
     refreshDatabase();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, session]);
 
   // Handle Admin Login
@@ -1092,6 +1156,7 @@ export default function AdminView({ currentUser, allRequests, onRefreshRequests 
           { id: 'verifications', label: 'Medical Verification', icon: Award },
           { id: 'hospitals', label: 'Hospitals & Directory', icon: Building },
           { id: 'ambulances', label: 'Ambulance Management', icon: Phone },
+          { id: 'features', label: 'Feature Management', icon: Sliders },
           { id: 'blogs', label: 'Manage Blogs', icon: BookOpen },
           { id: 'notifications', label: 'Broadcasts', icon: Bell },
           { id: 'logs', label: 'Activity Logs', icon: FileText },
@@ -1276,7 +1341,12 @@ export default function AdminView({ currentUser, allRequests, onRefreshRequests 
                         filteredDonors.map((donor) => (
                           <tr key={donor.id} className="hover:bg-slate-850/40">
                             <td className="px-6 py-4.5">
-                              <p className="font-bold text-slate-200">{donor.name}</p>
+                              <div className="flex items-center gap-2">
+                                <p className="font-bold text-slate-200">{donor.name}</p>
+                                <span className="text-[10px] font-mono font-bold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">
+                                  {donor.donorId || 'DBD-UNKNOWN'}
+                                </span>
+                              </div>
                               <p className="text-[10px] text-slate-400 mt-0.5">{donor.email} • {donor.phone}</p>
                             </td>
                             <td className="px-6 py-4.5">
@@ -1981,16 +2051,125 @@ export default function AdminView({ currentUser, allRequests, onRefreshRequests 
             </motion.div>
           )}
 
-          {/* Tab Content: Broadcast Custom Notifications */}
+          {/* Tab Content: Broadcast Custom Notifications & Notification Logs */}
           {activeTab === 'notifications' && (
             <motion.div 
               key="notifications"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="max-w-2xl mx-auto text-left"
+              className="space-y-8 text-left"
             >
-              <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-6">
+              {/* Notification Center Stats Bento Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+                <div className="bg-slate-900 border border-slate-800 p-5 rounded-2xl">
+                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block">Total Emails Sent</span>
+                  <p className="text-2xl font-black text-emerald-400 mt-2">{notifStats.totalSent}</p>
+                </div>
+                <div className="bg-slate-900 border border-slate-800 p-5 rounded-2xl">
+                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block">Failed Emails</span>
+                  <p className="text-2xl font-black text-rose-500 mt-2">{notifStats.failedCount}</p>
+                </div>
+                <div className="bg-slate-900 border border-slate-800 p-5 rounded-2xl">
+                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block">Pending Queue</span>
+                  <p className="text-2xl font-black text-amber-400 mt-2">{notifStats.pendingCount}</p>
+                </div>
+                <div className="bg-slate-900 border border-slate-800 p-5 rounded-2xl flex items-center justify-center">
+                  <button
+                    onClick={handleRetryFailedLogs}
+                    disabled={retryingLogs || notifStats.failedCount === 0}
+                    className="w-full py-3 bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-500 hover:to-amber-600 text-slate-950 font-black text-xs uppercase tracking-wider rounded-xl transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <RefreshCw className={`w-4 h-4 ${retryingLogs ? 'animate-spin' : ''}`} />
+                    {retryingLogs ? 'Retrying Failed Queue...' : 'Retry Failed Emails'}
+                  </button>
+                </div>
+              </div>
+
+              {/* Notification Queue & Audit Logs Table */}
+              <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden space-y-4 p-5">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-sm font-bold text-slate-200 uppercase tracking-widest flex items-center gap-2">
+                      <Bell className="w-4 h-4 text-rose-500" />
+                      Email & Match Notification Dispatch Logs
+                    </h3>
+                    <p className="text-xs text-slate-400 mt-1">Audit log of all emergency match email dispatches, deduplication status, and delivery error messages.</p>
+                  </div>
+                  <button
+                    onClick={refreshDatabase}
+                    className="px-3 py-1.5 bg-slate-950 hover:bg-slate-800 border border-slate-800 text-xs font-bold text-slate-300 rounded-lg transition"
+                  >
+                    Refresh Logs
+                  </button>
+                </div>
+
+                <div className="overflow-x-auto rounded-xl border border-slate-800/80">
+                  <table className="w-full border-collapse">
+                    <thead>
+                      <tr className="bg-slate-950 text-[10px] font-black uppercase tracking-wider text-slate-400 border-b border-slate-800">
+                        <th className="px-4 py-3.5">Sent Time</th>
+                        <th className="px-4 py-3.5">Donor ID / User</th>
+                        <th className="px-4 py-3.5">Recipient Email</th>
+                        <th className="px-4 py-3.5">Request ID</th>
+                        <th className="px-4 py-3.5">Type</th>
+                        <th className="px-4 py-3.5">Status</th>
+                        <th className="px-4 py-3.5">Details / Error</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-800/50 text-xs text-slate-300 font-mono">
+                      {notifLogs.length === 0 ? (
+                        <tr>
+                          <td colSpan={7} className="px-6 py-8 text-center text-slate-500 font-sans text-xs">
+                            No email notification logs found in queue history.
+                          </td>
+                        </tr>
+                      ) : (
+                        notifLogs.map((l) => (
+                          <tr key={l.id} className="hover:bg-slate-850/40">
+                            <td className="px-4 py-3 text-slate-500 whitespace-nowrap text-[10px]">
+                              {new Date(l.sentAt || l.createdAt).toLocaleString()}
+                            </td>
+                            <td className="px-4 py-3 font-bold text-rose-400 whitespace-nowrap">
+                              {l.donorId}
+                            </td>
+                            <td className="px-4 py-3 font-medium text-slate-300">
+                              {l.recipientEmail}
+                            </td>
+                            <td className="px-4 py-3 text-slate-400 font-mono text-[11px]">
+                              {l.requestId}
+                            </td>
+                            <td className="px-4 py-3">
+                              <span className="px-2 py-0.5 bg-slate-950 border border-slate-800 rounded text-[9px] font-bold uppercase text-slate-400">
+                                {l.type}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3">
+                              <span
+                                className={`px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-wider ${
+                                  l.status === 'sent'
+                                    ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                                    : l.status === 'failed'
+                                    ? 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+                                    : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                                }`}
+                              >
+                                {l.status}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-slate-500 text-[10px] max-w-xs truncate">
+                              {l.errorMessage || 'Delivered successfully.'}
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* System Broadcast Form Container */}
+              <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-6 max-w-2xl">
                 <div>
                   <h3 className="text-base font-extrabold text-white flex items-center gap-2">
                     <Bell className="w-5.5 h-5.5 text-rose-500" />
@@ -2042,7 +2221,7 @@ export default function AdminView({ currentUser, allRequests, onRefreshRequests 
                   </div>
 
                   <div>
-                    <label className="block text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1.5">Full Broadcast Message Message Details</label>
+                    <label className="block text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1.5">Full Broadcast Message Details</label>
                     <textarea
                       rows={5}
                       value={broadcastData.message}
@@ -2483,6 +2662,205 @@ export default function AdminView({ currentUser, allRequests, onRefreshRequests 
             </motion.div>
           )}
 
+          {/* ========================================================================= */}
+          {/* TAB 12: FEATURE VISIBILITY MANAGEMENT CONTROL PANEL                     */}
+          {/* ========================================================================= */}
+          {activeTab === 'features' && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="space-y-6 text-left"
+            >
+              <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-xl">
+                <div className="space-y-1">
+                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-rose-500/10 border border-rose-500/20 text-rose-400 text-[10px] font-black uppercase tracking-wider">
+                    <Sliders className="w-3.5 h-3.5" />
+                    <span>System Governance</span>
+                  </div>
+                  <h2 className="text-xl font-black text-slate-100 tracking-tight">Feature Visibility & Maintenance Control</h2>
+                  <p className="text-xs text-slate-400 max-w-3xl leading-relaxed">
+                    Manage live public visibility, emergency hidden states, and maintenance overlays for directory modules. Route guarding, navigation, search indexes, and SEO sitemaps update dynamically in real time.
+                  </p>
+                </div>
+                <button
+                  onClick={refreshDatabase}
+                  className="px-4 py-2.5 bg-slate-950 hover:bg-slate-850 border border-slate-800 hover:border-slate-700 text-xs font-bold text-slate-300 rounded-xl transition flex items-center gap-2 cursor-pointer shrink-0"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" />
+                  Sync Settings
+                </button>
+              </div>
+
+              {/* Section: Public Directory Modules */}
+              <div className="space-y-4">
+                <h3 className="text-sm font-extrabold uppercase tracking-wider text-slate-300 flex items-center gap-2">
+                  <ShieldCheck className="w-4 h-4 text-rose-500" />
+                  Public Directory Modules
+                </h3>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  {[
+                    { key: 'hospitals', name: 'Hospitals & Clinics', desc: 'Specialized healthcare facilities, ICU availability, and clinical center directory.', icon: Building },
+                    { key: 'blood-banks', name: 'Blood Banks & Storage', desc: 'Official blood repos, component stock telemetry, and lab contacts directory.', icon: Droplet },
+                    { key: 'ambulances', name: 'Ambulance Directory', desc: '24/7 emergency ICU, AC, non-AC, and freezer ambulance dispatch roster.', icon: Phone }
+                  ].map((mod) => {
+                    const setting = featureSettings.find(f => f.featureKey === mod.key);
+                    const currentStatus: FeatureStatus = setting
+                      ? setting.enabled
+                        ? setting.maintenanceMode ? 'Maintenance' : 'Public'
+                        : 'Hidden'
+                      : 'Hidden';
+                    const isUpdating = updatingFeatureKey === mod.key;
+                    const ModIcon = mod.icon;
+
+                    return (
+                      <div
+                        key={mod.key}
+                        className={`p-5 rounded-2xl border transition-all space-y-4 flex flex-col justify-between ${
+                          currentStatus === 'Public'
+                            ? 'bg-slate-900/90 border-emerald-500/30 shadow-lg shadow-emerald-950/10'
+                            : currentStatus === 'Maintenance'
+                            ? 'bg-slate-900/90 border-amber-500/30 shadow-lg shadow-amber-950/10'
+                            : 'bg-slate-950/80 border-slate-850 opacity-85'
+                        }`}
+                      >
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-2.5">
+                              <div className="p-2.5 rounded-xl bg-slate-800/80 border border-slate-700 text-rose-400">
+                                <ModIcon className="w-5 h-5" />
+                              </div>
+                              <div>
+                                <h4 className="text-sm font-black text-slate-100">{mod.name}</h4>
+                                <p className="text-[10px] font-mono text-slate-500">{mod.key}</p>
+                              </div>
+                            </div>
+
+                            {currentStatus === 'Public' && (
+                              <span className="px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center gap-1.5 shrink-0">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
+                                Public
+                              </span>
+                            )}
+                            {currentStatus === 'Maintenance' && (
+                              <span className="px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-500/10 text-amber-400 border border-amber-500/20 flex items-center gap-1.5 shrink-0">
+                                <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span>
+                                Maintenance
+                              </span>
+                            )}
+                            {currentStatus === 'Hidden' && (
+                              <span className="px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-slate-800 text-slate-400 border border-slate-700 flex items-center gap-1.5 shrink-0">
+                                <span className="w-1.5 h-1.5 rounded-full bg-slate-500"></span>
+                                Hidden
+                              </span>
+                            )}
+                          </div>
+
+                          <p className="text-xs text-slate-400 leading-relaxed min-h-[36px]">{mod.desc}</p>
+                        </div>
+
+                        {/* Action Pill Controls */}
+                        <div className="pt-3 border-t border-slate-800/80 space-y-2">
+                          <label className="text-[10px] font-extrabold uppercase tracking-widest text-slate-500 block">
+                            Select Visibility Mode
+                          </label>
+                          <div className="grid grid-cols-3 gap-1.5 p-1 bg-slate-950 rounded-xl border border-slate-800">
+                            {(['Public', 'Hidden', 'Maintenance'] as FeatureStatus[]).map((st) => (
+                              <button
+                                key={st}
+                                disabled={isUpdating || !isSuperAdmin}
+                                onClick={() => handleUpdateFeatureStatus(mod.key, st)}
+                                className={`py-2 px-1 text-[10px] font-black uppercase tracking-wider rounded-lg transition-all cursor-pointer text-center ${
+                                  currentStatus === st
+                                    ? st === 'Public'
+                                      ? 'bg-emerald-600 text-white shadow'
+                                      : st === 'Maintenance'
+                                      ? 'bg-amber-600 text-white shadow'
+                                      : 'bg-slate-700 text-slate-100 shadow'
+                                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/60'
+                                }`}
+                              >
+                                {st}
+                              </button>
+                            ))}
+                          </div>
+                          {setting?.updatedAt && (
+                            <p className="text-[9px] text-slate-500 font-mono pt-1">
+                              Updated: {new Date(setting.updatedAt).toLocaleString()} {setting.updatedBy ? `by ${setting.updatedBy}` : ''}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Section: Future Expansion Modules */}
+              <div className="space-y-4 pt-4">
+                <h3 className="text-sm font-extrabold uppercase tracking-wider text-slate-300 flex items-center gap-2">
+                  <Globe className="w-4 h-4 text-sky-500" />
+                  Future Ecosystem Modules
+                </h3>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {featureSettings
+                    .filter(f => !['hospitals', 'blood-banks', 'ambulances'].includes(f.featureKey))
+                    .map((setting) => {
+                      const currentStatus: FeatureStatus = setting.enabled
+                        ? setting.maintenanceMode ? 'Maintenance' : 'Public'
+                        : 'Hidden';
+                      const isUpdating = updatingFeatureKey === setting.featureKey;
+
+                      return (
+                        <div
+                          key={setting.featureKey}
+                          className="p-4 bg-slate-900/60 border border-slate-800/80 rounded-xl space-y-3 flex flex-col justify-between"
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <div>
+                              <h4 className="text-xs font-bold text-slate-200">{setting.name || setting.featureKey}</h4>
+                              <p className="text-[9px] font-mono text-slate-500">{setting.featureKey}</p>
+                            </div>
+                            <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider ${
+                              currentStatus === 'Public'
+                                ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                                : currentStatus === 'Maintenance'
+                                ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                                : 'bg-slate-800 text-slate-400 border border-slate-700'
+                            }`}>
+                              {currentStatus}
+                            </span>
+                          </div>
+
+                          <div className="grid grid-cols-3 gap-1 p-1 bg-slate-950 rounded-lg border border-slate-800">
+                            {(['Public', 'Hidden', 'Maintenance'] as FeatureStatus[]).map((st) => (
+                              <button
+                                key={st}
+                                disabled={isUpdating || !isSuperAdmin}
+                                onClick={() => handleUpdateFeatureStatus(setting.featureKey, st)}
+                                className={`py-1.5 text-[9px] font-black uppercase tracking-wider rounded transition-all cursor-pointer text-center ${
+                                  currentStatus === st
+                                    ? st === 'Public'
+                                      ? 'bg-emerald-600 text-white'
+                                      : st === 'Maintenance'
+                                      ? 'bg-amber-600 text-white'
+                                      : 'bg-slate-700 text-slate-100'
+                                    : 'text-slate-400 hover:text-slate-200'
+                                }`}
+                              >
+                                {st}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })}
+                </div>
+              </div>
+            </motion.div>
+          )}
         </AnimatePresence>
       </div>
 

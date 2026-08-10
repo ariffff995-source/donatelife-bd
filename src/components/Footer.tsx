@@ -17,6 +17,7 @@ import {
   Check 
 } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
+import { useAppContext } from '../providers';
 
 interface FooterProps {
   onNavigate: (tabId: string) => void;
@@ -24,6 +25,7 @@ interface FooterProps {
 
 export default function Footer({ onNavigate }: FooterProps) {
   const { language, t } = useLanguage();
+  const { isFeatureHidden } = useAppContext();
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
   const handleCopyNum = (phone: string, id: string) => {
@@ -443,6 +445,14 @@ export default function Footer({ onNavigate }: FooterProps) {
                 descBn: 'মূল প্ল্যাটফর্ম পোর্টাল, লাইভ রক্তদানের পরিসংখ্যান এবং কেন্দ্রীয় নোটিফিকেশন বোর্ড।',
               },
               {
+                id: 'donors',
+                labelKey: 'navbar.allDonors',
+                icon: Users,
+                color: 'text-amber-500 bg-amber-500/5',
+                descEn: 'Public directory of all verified volunteer blood donors in Bangladesh.',
+                descBn: 'বাংলাদেশের সকল যাচাইকৃত এবং নিবন্ধিত রক্তদাতাদের পাবলিক তালিকা।',
+              },
+              {
                 id: 'search',
                 labelKey: 'navbar.findDonors',
                 icon: Users,
@@ -467,12 +477,31 @@ export default function Footer({ onNavigate }: FooterProps) {
                 descBn: 'জাতীয় জরুরী হটলাইন ডিরেক্টরি, ব্রাউজার জিপিএস স্থানাঙ্ক এবং লাইভ সহায়তা কেন্দ্র।',
               },
               {
-                id: 'directories',
-                labelKey: 'navbar.directories',
+                id: 'hospitals',
+                labelKey: 'navbar.hospitals',
                 icon: MapPin,
                 color: 'text-indigo-500 bg-indigo-500/5',
-                descEn: 'Curated clinical records of local public hospitals, specialized labs, and ambulances.',
-                descBn: 'হাসপাতাল, ক্লিনিক, এ্যাম্বুলেন্স সার্ভিস এবং নিরাপদ ব্লাড ব্যাংক সেন্টারের বিবরণী।',
+                descEn: 'Public & private specialized hospitals, ICU units, and clinical care centers.',
+                descBn: 'বিশেষায়িত হাসপাতাল, আইসিইউ শয্যা এবং স্বাস্থ্য সেবা কেন্দ্র।',
+                featureKey: 'hospitals',
+              },
+              {
+                id: 'blood-banks',
+                labelKey: 'navbar.bloodBanks',
+                icon: Heart,
+                color: 'text-rose-500 bg-rose-500/5',
+                descEn: 'Certified blood banks, plasma centers, and emergency blood storage units.',
+                descBn: 'সার্টিফাইড ব্লাড ব্যাংক, প্লাজমা সেন্টার এবং ব্লাড স্টোরেজ ডিরেক্টরি।',
+                featureKey: 'blood-banks',
+              },
+              {
+                id: 'ambulances',
+                labelKey: 'navbar.ambulances',
+                icon: Phone,
+                color: 'text-amber-500 bg-amber-500/5',
+                descEn: '24/7 ICU, AC, non-AC & freezer ambulance dispatch directory across Bangladesh.',
+                descBn: '২৪/৭ আইসিইউ, এসি, নন-এসি ও ফ্রিজার অ্যাম্বুলেন্স জরুরি সার্ভিস কল ডিরেক্টরি।',
+                featureKey: 'ambulances',
               },
               {
                 id: 'blog',
@@ -481,8 +510,9 @@ export default function Footer({ onNavigate }: FooterProps) {
                 color: 'text-cyan-500 bg-cyan-500/5',
                 descEn: 'Read medical advice, blood donation guidelines, safety checklists, and articles.',
                 descBn: 'রক্তদানের নিয়মাবলী, স্বাস্থ্য বিষয়ক প্রবন্ধ, এবং ডোনেটলাইফ মেডিকেল ব্লগসমূহ।',
+                featureKey: 'blog',
               }
-            ].map((link) => {
+            ].filter(link => !link.featureKey || !isFeatureHidden(link.featureKey)).map((link) => {
               const IconComp = link.icon;
               return (
                 <button

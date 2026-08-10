@@ -98,6 +98,7 @@ export default function CmsManager() {
     } else if (activeSubTab === 'ambulances') {
       loadAmbulances();
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeSubTab]);
 
   // Handle Changing Selected Page ID

@@ -1,17 +1,8 @@
 import { db } from './index';
 import {
-  users,
-  requests,
-  donations,
-  notifications,
-  hospitals,
-  bloodBanks,
   admins,
-  activityLogs,
   blogs,
   cmsContent,
-  media,
-  ambulances,
 } from './schema';
 import { blogPosts as initialBlogPosts } from '../data/blogs';
 import { sql } from 'drizzle-orm';
@@ -20,240 +11,30 @@ export async function seedDatabase() {
   try {
     console.log('Starting database seeding check...');
 
-    // 1. Seed Admins
+    const parseCount = (res: any) => Number(res?.rows?.[0]?.count ?? res?.[0]?.count ?? 0);
+
+    // 1. Seed Default Admin (only if no admin exists)
     const existingAdmins = await db.execute(sql`SELECT count(*) FROM admins`);
-    const adminCount = Number(existingAdmins.rows[0]?.count || 0);
+    const adminCount = parseCount(existingAdmins);
     if (adminCount === 0) {
-      console.log('Seeding default administrators...');
+      console.log('Seeding initial administrator account...');
       await db.insert(admins).values([
         {
-          id: 'admin-1',
+          id: 'admin-super',
           username: 'superadmin',
-          name: 'Dr. Arif Rahman (Super)',
+          name: 'Super Administrator',
           role: 'super-admin',
           passwordHash: 'adminpassword123',
-          createdAt: new Date('2026-06-01T00:00:00.000Z'),
-        },
-        {
-          id: 'admin-2',
-          username: 'moderator',
-          name: 'Sumi Akter (Moderator)',
-          role: 'moderator',
-          passwordHash: 'modpassword123',
-          createdAt: new Date('2026-06-15T00:00:00.000Z'),
-        },
-        {
-          id: 'admin-3',
-          username: 'ariful123',
-          name: 'Ariful Islam (Admin)',
-          role: 'super-admin',
-          passwordHash: 'AAfifaAfi128',
           createdAt: new Date(),
         },
       ]);
     }
 
-    // 2. Seed Users
-    const existingUsers = await db.execute(sql`SELECT count(*) FROM users`);
-    const userCount = Number(existingUsers.rows[0]?.count || 0);
-    if (userCount === 0) {
-      console.log('Seeding default users...');
-      await db.insert(users).values([
-        {
-          id: 'user-admin',
-          name: 'Dr. Arif Rahman',
-          email: 'ariffff995@gmail.com',
-          phone: '01712345678',
-          bloodGroup: 'A+',
-          division: 'Dhaka',
-          district: 'Dhaka',
-          upazila: 'Dhanmondi',
-          lastDonationDate: '2026-03-15',
-          isAvailable: true,
-          isAdmin: true,
-          createdAt: new Date(),
-          isEmailVerified: true,
-          isPhoneVerified: true,
-          isDonorVerified: true,
-          verificationStatus: 'approved',
-        },
-        {
-          id: 'user-2',
-          name: 'Tariqul Islam',
-          email: 'tariq@gmail.com',
-          phone: '01811223344',
-          bloodGroup: 'O-',
-          division: 'Chittagong',
-          district: 'Chittagong',
-          upazila: 'Hathazari',
-          lastDonationDate: null,
-          isAvailable: true,
-          isAdmin: false,
-          createdAt: new Date(),
-        },
-        {
-          id: 'user-3',
-          name: 'Nadia Sultana',
-          email: 'nadia@gmail.com',
-          phone: '01911223344',
-          bloodGroup: 'B+',
-          division: 'Sylhet',
-          district: 'Sylhet',
-          upazila: 'Sylhet Sadar',
-          lastDonationDate: null,
-          isAvailable: true,
-          isAdmin: false,
-          createdAt: new Date(),
-        },
-        {
-          id: 'user-4',
-          name: 'Mustafizur Rahman',
-          email: 'mustafiz@gmail.com',
-          phone: '01555555555',
-          bloodGroup: 'AB-',
-          division: 'Sylhet',
-          district: 'Sylhet',
-          upazila: 'Sylhet Sadar',
-          lastDonationDate: '2026-05-10',
-          isAvailable: false,
-          isAdmin: false,
-          createdAt: new Date(),
-        },
-        {
-          id: 'user-5',
-          name: 'Anika Tabassum',
-          email: 'anika@gmail.com',
-          phone: '01666778899',
-          bloodGroup: 'O+',
-          division: 'Rajshahi',
-          district: 'Rajshahi',
-          upazila: 'Boalia',
-          lastDonationDate: null,
-          isAvailable: true,
-          isAdmin: false,
-          createdAt: new Date(),
-        },
-      ]);
-    }
-
-    // 3. Seed Hospitals
-    const existingHospitals = await db.execute(sql`SELECT count(*) FROM hospitals`);
-    const hospitalCount = Number(existingHospitals.rows[0]?.count || 0);
-    if (hospitalCount === 0) {
-      console.log('Seeding default hospitals...');
-      await db.insert(hospitals).values([
-        {
-          id: 'hosp-1',
-          name: 'Dhaka Medical College Hospital (DMCH)',
-          division: 'Dhaka',
-          district: 'Dhaka',
-          upazila: 'Ramna',
-          address: 'Secretariat Road, Ramna, Dhaka',
-          contactPhone: '+8802223386323',
-          services: ['Emergency Traumatology', 'Inpatient Transfusion', '24/7 ICU Support', 'Thalassemia Board'],
-          type: 'government',
-        },
-        {
-          id: 'hosp-2',
-          name: 'Chittagong Medical College Hospital (CMCH)',
-          division: 'Chittagong',
-          district: 'Chittagong',
-          upazila: 'Panchlaish',
-          address: 'K.B. Fazlul Kader Road, Panchlaish, Chittagong',
-          contactPhone: '+88031619421',
-          services: ['Maternal Hemorrhage Unit', 'Emergency Care', 'Cardiac Surgery Support'],
-          type: 'government',
-        },
-        {
-          id: 'hosp-3',
-          name: 'Sylhet MAG Osmani Medical College',
-          division: 'Sylhet',
-          district: 'Sylhet',
-          upazila: 'Sylhet Sadar',
-          address: 'Medical College Road, Sylhet',
-          contactPhone: '+880821713481',
-          services: ['Pediatric Care', 'Blood Banking', 'Critical Surgery Recovery'],
-          type: 'government',
-        },
-        {
-          id: 'hosp-4',
-          name: 'Evercare Hospital Dhaka',
-          division: 'Dhaka',
-          district: 'Dhaka',
-          upazila: 'Bashundhara',
-          address: 'Plot 81, Block E, Bashundhara R/A, Dhaka',
-          contactPhone: '10678',
-          services: ['24/7 Transfusion Medicine', 'Oncology Ward', 'Neonatal ICU'],
-          type: 'private',
-        },
-        {
-          id: 'hosp-5',
-          name: 'Square Hospital Dhaka',
-          division: 'Dhaka',
-          district: 'Dhaka',
-          upazila: 'Tejgaon',
-          address: '18/F, Bir Uttam Qazi Nuruzzaman Sarak, West Panthapath, Dhaka',
-          contactPhone: '10616',
-          services: ['Advanced Cardiac Center', 'Hematology Service', 'Emergency Response Team'],
-          type: 'private',
-        },
-      ]);
-    }
-
-    // 4. Seed Blood Banks
-    const existingBanks = await db.execute(sql`SELECT count(*) FROM blood_banks`);
-    const bankCount = Number(existingBanks.rows[0]?.count || 0);
-    if (bankCount === 0) {
-      console.log('Seeding default blood banks...');
-      await db.insert(bloodBanks).values([
-        {
-          id: 'bank-1',
-          name: 'Bangladesh Red Crescent Blood Center',
-          division: 'Dhaka',
-          district: 'Dhaka',
-          upazila: 'Mohammadpur',
-          address: '7/5 Aurongzeb Road, Mohammadpur, Dhaka',
-          contactPhone: '+88029116563',
-          availableGroups: { 'A+': 12, 'A-': 4, 'B+': 18, 'B-': 2, 'AB+': 9, 'AB-': 1, 'O+': 22, 'O-': 3 },
-        },
-        {
-          id: 'bank-2',
-          name: 'Quantum Blood Lab & Center',
-          division: 'Dhaka',
-          district: 'Dhaka',
-          upazila: 'Sutrapar',
-          address: '31/V, Shantiinagar, Kakrail, Dhaka',
-          contactPhone: '+8801714010869',
-          availableGroups: { 'A+': 25, 'A-': 8, 'B+': 32, 'B-': 5, 'AB+': 14, 'AB-': 3, 'O+': 41, 'O-': 7 },
-        },
-        {
-          id: 'bank-3',
-          name: 'Sandhani DMCH Unit',
-          division: 'Dhaka',
-          district: 'Dhaka',
-          upazila: 'Ramna',
-          address: 'Dhaka Medical College, Ramna, Dhaka',
-          contactPhone: '+8801711234511',
-          availableGroups: { 'A+': 8, 'A-': 1, 'B+': 11, 'B-': 0, 'AB+': 4, 'AB-': 0, 'O+': 15, 'O-': 2 },
-        },
-        {
-          id: 'bank-4',
-          name: 'Badhan Blood Bank (KU Unit)',
-          division: 'Khulna',
-          district: 'Khulna',
-          upazila: 'Khulna Sadar',
-          address: 'Khulna University Campus, Khulna',
-          contactPhone: '+8801722334455',
-          availableGroups: { 'A+': 5, 'A-': 0, 'B+': 8, 'B-': 1, 'AB+': 2, 'AB-': 0, 'O+': 10, 'O-': 1 },
-        },
-      ]);
-    }
-
-    // 5. Seed Blogs
+    // 2. Seed Blogs (only if empty)
     const existingBlogs = await db.execute(sql`SELECT count(*) FROM blogs`);
-    const blogCount = Number(existingBlogs.rows[0]?.count || 0);
+    const blogCount = parseCount(existingBlogs);
     if (blogCount === 0) {
-      console.log('Seeding default blog posts...');
+      console.log('Seeding initial blog posts...');
       const blogsToInsert = initialBlogPosts.map((b) => ({
         id: b.id,
         slug: b.slug,
@@ -266,174 +47,9 @@ export async function seedDatabase() {
       await db.insert(blogs).values(blogsToInsert);
     }
 
-    // 6. Seed Blood Requests
-    const existingRequests = await db.execute(sql`SELECT count(*) FROM requests`);
-    const reqCount = Number(existingRequests.rows[0]?.count || 0);
-    if (reqCount === 0) {
-      console.log('Seeding default blood requests...');
-      await db.insert(requests).values([
-        {
-          id: 'req-1',
-          userId: 'user-2',
-          patientName: 'Rabeya Begum',
-          bloodGroup: 'AB-',
-          unitsNeeded: 2,
-          hospitalName: 'Dhaka Medical College Hospital',
-          division: 'Dhaka',
-          district: 'Dhaka',
-          upazila: 'Ramna',
-          contactPhone: '01711223344',
-          reason: 'Scheduled Coronary Artery Bypass Surgery (CABG)',
-          status: 'pending',
-          requiredDate: new Date(Date.now() + 86400000 * 2).toISOString().split('T')[0],
-          createdAt: new Date(),
-        },
-        {
-          id: 'req-2',
-          userId: 'user-3',
-          patientName: 'Master Swapnil',
-          bloodGroup: 'O-',
-          unitsNeeded: 1,
-          hospitalName: 'Sylhet MAG Osmani Medical College',
-          division: 'Sylhet',
-          district: 'Sylhet',
-          upazila: 'Sylhet Sadar',
-          contactPhone: '01999887766',
-          reason: 'Thalassemia quarterly blood transfusion therapy',
-          status: 'pending',
-          requiredDate: new Date(Date.now() + 86400000).toISOString().split('T')[0],
-          createdAt: new Date(),
-        },
-        {
-          id: 'req-3',
-          userId: 'user-4',
-          patientName: 'Imran Hossain',
-          bloodGroup: 'B+',
-          unitsNeeded: 3,
-          hospitalName: 'Chittagong Medical College Hospital',
-          division: 'Chittagong',
-          district: 'Chittagong',
-          upazila: 'Panchlaish',
-          contactPhone: '01555667788',
-          reason: 'Emergency road accident trauma & internal bleeding',
-          status: 'fulfilled',
-          requiredDate: new Date(Date.now() - 86400000).toISOString().split('T')[0],
-          createdAt: new Date(),
-        },
-      ]);
-    }
-
-    // 7. Seed Donations
-    const existingDonations = await db.execute(sql`SELECT count(*) FROM donations`);
-    const donationCount = Number(existingDonations.rows[0]?.count || 0);
-    if (donationCount === 0) {
-      console.log('Seeding default donation histories...');
-      await db.insert(donations).values([
-        {
-          id: 'don-1',
-          userId: 'user-admin',
-          recipientName: 'Imran Hossain',
-          bloodGroup: 'A+',
-          donationDate: '2026-03-15',
-          hospitalName: 'Evercare Hospital Dhaka',
-          notes: 'Regular voluntary blood donation to support a post-surgical recovery.',
-          createdAt: new Date(),
-        },
-      ]);
-    }
-
-    // 8. Seed Notifications
-    const existingNotifs = await db.execute(sql`SELECT count(*) FROM notifications`);
-    const notifCount = Number(existingNotifs.rows[0]?.count || 0);
-    if (notifCount === 0) {
-      console.log('Seeding default notifications...');
-      await db.insert(notifications).values([
-        {
-          id: 'notif-1',
-          userId: 'user-admin',
-          title: 'New A+ Blood Request Nearby',
-          message: 'A patient needs 2 units of A+ blood at Dhanmondi General Hospital.',
-          isRead: false,
-          type: 'request_match',
-          relatedId: 'req-1',
-          createdAt: new Date(),
-        },
-      ]);
-    }
-
-    // 9. Seed Activity Logs
-    const existingLogs = await db.execute(sql`SELECT count(*) FROM activity_logs`);
-    const logCount = Number(existingLogs.rows[0]?.count || 0);
-    if (logCount === 0) {
-      console.log('Seeding default activity logs...');
-      await db.insert(activityLogs).values([
-        {
-          id: 'log-1',
-          timestamp: new Date('2026-07-03T10:00:00.000Z'),
-          adminUsername: 'superadmin',
-          adminRole: 'super-admin',
-          action: 'System Initialized',
-          details: 'Super admin completed platform security audit and initialized databases.',
-        },
-        {
-          id: 'log-2',
-          timestamp: new Date('2026-07-04T01:30:00.000Z'),
-          adminUsername: 'moderator',
-          adminRole: 'moderator',
-          action: 'Verified Hospital',
-          details: "Approved 'Dhaka Medical College Hospital' service expansion profile.",
-        },
-      ]);
-    }
-
-    // 10. Seed Ambulances
-    const existingAmbulances = await db.execute(sql`SELECT count(*) FROM ambulances`);
-    const ambulanceCount = Number(existingAmbulances.rows[0]?.count || 0);
-    if (ambulanceCount === 0) {
-      console.log('Seeding default ambulance directory listings...');
-      await db.insert(ambulances).values([
-        {
-          id: 'amb-1',
-          name: 'Al-Amin Emergency Ambulance Service',
-          division: 'Dhaka',
-          district: 'Dhaka',
-          upazila: 'Dhanmondi',
-          address: 'House 12, Road 5, Dhanmondi, Dhaka',
-          contactPhone: '+8801711223399',
-          serviceArea: 'Dhaka Division & Nationwide',
-          availableTypes: ['AC Ambulance', 'Non-AC Ambulance', 'ICU Support', 'Freezer Ambulance'],
-          openingHours: '24 Hours/7 Days Service',
-        },
-        {
-          id: 'amb-2',
-          name: 'Chittagong LifeLine Ambulance',
-          division: 'Chittagong',
-          district: 'Chittagong',
-          upazila: 'Panchlaish',
-          address: 'Panchlaish R/A (Opposite CMCH), Chittagong',
-          contactPhone: '+8801811223399',
-          serviceArea: 'Chittagong District',
-          availableTypes: ['AC Ambulance', 'Non-AC Ambulance', 'Cardiac ICU Care'],
-          openingHours: '24 Hours Service',
-        },
-        {
-          id: 'amb-3',
-          name: 'Sylhet Ansar Ambulance Service',
-          division: 'Sylhet',
-          district: 'Sylhet',
-          upazila: 'Sylhet Sadar',
-          address: 'Zindabazar Medical Road, Sylhet',
-          contactPhone: '+8801911223399',
-          serviceArea: 'Sylhet Division',
-          availableTypes: ['AC Ambulance', 'Non-AC Ambulance'],
-          openingHours: '24/7 Service',
-        },
-      ]);
-    }
-
-    // 11. Seed CMS Content
+    // 3. Seed CMS Content (only if empty)
     const existingCMS = await db.execute(sql`SELECT count(*) FROM cms_content`);
-    const cmsCount = Number(existingCMS.rows[0]?.count || 0);
+    const cmsCount = parseCount(existingCMS);
     if (cmsCount === 0) {
       console.log('Seeding default CMS content pages...');
       const cmsPages = [
@@ -585,9 +201,9 @@ export async function seedDatabase() {
             logoUrl: "/assets/logo.png",
             faviconUrl: "/favicon.ico",
             themeColors: {
-              primary: "#f43f5e", // Rose 500
-              secondary: "#0f172a", // Slate 900
-              accent: "#fda4af", // Rose 300
+              primary: "#f43f5e",
+              secondary: "#0f172a",
+              accent: "#fda4af",
             },
             defaultLanguage: "bn",
             seoTitle: "DonateLife BD - Real-time Blood Matchmaking Network Bangladesh",
@@ -605,7 +221,7 @@ export async function seedDatabase() {
           draft: {
             topNoticeBar: {
               enabled: true,
-              type: "info", // info | warning | emergency
+              type: "info",
               en: "📢 Voluntary Blood Donation camp on 15th July at TSC, University of Dhaka. Join us!",
               bn: "📢 আগামী ১৫ই জুলাই ঢাকা বিশ্ববিদ্যালয়ের টিএসসিতে স্বেচ্ছায় রক্তদান কর্মসূচী। অংশ নিন!"
             },
@@ -643,14 +259,13 @@ export async function seedDatabase() {
       ];
 
       for (const page of cmsPages) {
-        // Copy draft to published to make it live by default on seed
         page.published = page.draft;
         await db.insert(cmsContent).values(page);
       }
     }
 
-    console.log('Database seeding complete!');
+    console.log('Database initial setup check complete!');
   } catch (err) {
-    console.error('Error during database seeding:', err);
+    console.error('Error during database seeding check:', err);
   }
 }

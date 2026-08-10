@@ -183,6 +183,7 @@ export default function LiveImpactTelemetry({ onNavigate, initialStats }: LiveIm
 
     // Always fetch fresh data (quietly if cache exists)
     fetchTelemetryData(hasLoadedFromCache);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Auto-refresh timer loop
@@ -198,6 +199,7 @@ export default function LiveImpactTelemetry({ onNavigate, initialStats }: LiveIm
     }, 1000);
 
     return () => clearInterval(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [telemetry]);
 
   // Format time relative or absolute

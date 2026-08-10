@@ -91,6 +91,7 @@ export default function LocationSelector({
         }
       }
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [division, district, upazila, policeStation, cleanDivision, cleanDistrict, cleanUpz]);
 
   // Synchronous change handlers for user actions to guarantee immediate resets

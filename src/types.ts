@@ -24,6 +24,8 @@ export interface User {
   verificationNote?: string | null;
   verificationDocument?: string;
   verificationStatus?: 'none' | 'pending' | 'approved' | 'rejected';
+  donorId?: string | null;
+  showPhone?: boolean;
   facebookUrl?: string;
   showFacebook?: boolean;
   gender?: 'male' | 'female' | 'other' | string;
@@ -236,5 +238,19 @@ export interface MediaAsset {
   type: string;
   uploadedAt: string;
   uploadedBy: string;
+}
+
+export type FeatureStatus = 'Public' | 'Hidden' | 'Maintenance';
+
+export interface FeatureSetting {
+  id: string;
+  featureKey: string;
+  name?: string;
+  description?: string;
+  enabled: boolean;
+  maintenanceMode: boolean;
+  status: FeatureStatus;
+  updatedBy?: string | null;
+  updatedAt?: string;
 }
 

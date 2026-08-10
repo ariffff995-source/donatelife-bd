@@ -54,10 +54,14 @@ export const translations = {
     // Navbar
     navbar: {
       home: "Home",
+      allDonors: "All Donors",
       findDonors: "Find Donors",
       emergencyRequests: "Emergency Requests",
       helpdesk: "Emergency Helpdesk",
       directories: "Directories",
+      hospitals: "Hospitals & Clinics",
+      bloodBanks: "Blood Banks",
+      ambulances: "Ambulance Directory",
       blogs: "Health Blog",
       requestBlood: "Request Blood",
       donorLogin: "Donor Login",
@@ -68,6 +72,29 @@ export const translations = {
       newNotif: "New",
       noNotif: "No notifications yet",
       markRead: "Mark as read"
+    },
+
+    // All Donors Page
+    donors: {
+      title: "All Donors Directory",
+      subtitle: "Verified volunteer blood donors across Bangladesh ready to save lives.",
+      searchPlaceholder: "Search donor name, ID (e.g. DBD-000001), or district...",
+      filterBloodGroup: "Blood Group",
+      filterDivision: "Division",
+      filterDistrict: "District",
+      filterAvailability: "Availability Status",
+      allStatus: "All Donors",
+      availableOnly: "Available Only",
+      donorId: "Donor ID",
+      viewProfile: "View Profile",
+      publicContact: "Contact Donor",
+      hiddenContact: "Contact Info Hidden",
+      lastDonated: "Last Donated",
+      noDonorsFound: "No verified active donors match your search filters.",
+      verifiedDonor: "Verified Donor",
+      availableNow: "Available Now",
+      resting: "Resting / Unavailable",
+      phoneHiddenNotice: "Donor phone number is kept private upon request."
     },
 
     // Home View
@@ -375,10 +402,14 @@ export const translations = {
     // Navbar
     navbar: {
       home: "হোম",
+      allDonors: "সকল রক্তদাতা",
       findDonors: "রক্তদাতা খুঁজুন",
       emergencyRequests: "জরুরী অনুরোধসমূহ",
       helpdesk: "জরুরী হেল্পডেস্ক",
       directories: "ডিরেক্টরি",
+      hospitals: "হাসপাতাল ও ক্লিনিক",
+      bloodBanks: "ব্লাড ব্যাংক",
+      ambulances: "অ্যাম্বুলেন্স সার্ভিস",
       blogs: "স্বাস্থ্য ব্লগ",
       requestBlood: "রক্তের আবেদন",
       donorLogin: "রক্তদাতা লগইন",
@@ -389,6 +420,29 @@ export const translations = {
       newNotif: "নতুন",
       noNotif: "কোন নতুন বিজ্ঞপ্তি নেই",
       markRead: "পঠিত হিসেবে চিহ্নিত করুন"
+    },
+
+    // All Donors Page
+    donors: {
+      title: "সকল রক্তদাতা ডিরেক্টরি",
+      subtitle: "জীবন বাঁচাতে প্রস্তুত বাংলাদেশের নিবন্ধিত এবং যাচাইকৃত রক্তদাতাদের তালিকা।",
+      searchPlaceholder: "নাম, ডোনার আইডি (যেমন DBD-000001) বা জেলা দিয়ে খুঁজুন...",
+      filterBloodGroup: "রক্তের গ্রুপ",
+      filterDivision: "বিভাগ",
+      filterDistrict: "জেলা",
+      filterAvailability: "উপলব্ধতার অবস্থা",
+      allStatus: "সকল রক্তদাতা",
+      availableOnly: "শুধুমাত্র প্রস্তুত",
+      donorId: "ডোনার আইডি",
+      viewProfile: "প্রোফাইল দেখুন",
+      publicContact: "যোগাযোগ করুন",
+      hiddenContact: "যোগাযোগ তথ্য গোপন",
+      lastDonated: "সর্বশেষ রক্তদান",
+      noDonorsFound: "আপনার অনুসন্ধানের সাথে মিল থাকা কোনো রক্তদাতা পাওয়া যায়নি।",
+      verifiedDonor: "যাচাইকৃত রক্তদাতা",
+      availableNow: "এখনই প্রস্তুত",
+      resting: "বিশ্রামে / প্রস্তুত নয়",
+      phoneHiddenNotice: "রক্তদাতার অনুরোধক্রমে মোবাইল নম্বর গোপন রাখা হয়েছে।"
     },
 
     // Home View

@@ -5,10 +5,14 @@ import { motion, AnimatePresence } from 'motion/react';
 import { User, BloodRequest, Notification } from '../types';
 import { api } from '../lib/api';
 import LocationSelector from '../components/LocationSelector';
-import { Heart, Save, Calendar, CheckCircle2, AlertCircle, RefreshCw, X, MessageSquare, ExternalLink, Upload, Facebook, MapPin } from 'lucide-react';
+import { Heart, Save, Calendar, CheckCircle2, AlertCircle, RefreshCw, X, MessageSquare, ExternalLink, Upload, Facebook, MapPin, QrCode, Award, Download, Star, ShieldCheck } from 'lucide-react';
 import { BLOOD_GROUPS } from '../data/bangladesh-locations';
 import { useLanguage } from '../contexts/LanguageContext';
 import { LastDonationCard } from '../components/LastDonationCard';
+import { DonorCardModal } from '../components/DonorCardModal';
+import { DonationCertificateModal } from '../components/DonationCertificateModal';
+import { calculateDonorXP, getDonorTier, getTierProgress, getDonorBadges } from '../utils/gamification';
+import { downloadCsv } from '../utils/exportHelper';
 
 interface DashboardViewProps {
   currentUser: User;
@@ -112,6 +116,7 @@ export default function DashboardView({
     avatarUrl: currentUser.avatarUrl || '',
     facebookUrl: currentUser.facebookUrl || '',
     showFacebook: currentUser.showFacebook !== false,
+    showPhone: currentUser.showPhone === true,
     gender: currentUser.gender || 'male',
     address: currentUser.address || ''
   });
@@ -125,6 +130,14 @@ export default function DashboardView({
   const [activeHistoryTab, setActiveHistoryTab] = useState<'donations' | 'requests'>('donations');
   const [donations, setDonations] = useState<any[]>([]);
   const [showLogForm, setShowLogForm] = useState(false);
+  const [showQrCardModal, setShowQrCardModal] = useState(false);
+  const [selectedCertDonation, setSelectedCertDonation] = useState<any | null>(null);
+
+  // Gamification calculations
+  const donorXp = calculateDonorXP(currentUser, donations.length);
+  const donorTier = getDonorTier(donorXp);
+  const tierProgress = getTierProgress(donorXp);
+  const donorBadges = getDonorBadges(currentUser, donations.length);
   const [donationForm, setDonationForm] = useState({
     recipientName: '',
     bloodGroup: currentUser.bloodGroup,
@@ -161,6 +174,7 @@ export default function DashboardView({
       avatarUrl: currentUser.avatarUrl || '',
       facebookUrl: currentUser.facebookUrl || '',
       showFacebook: currentUser.showFacebook !== false,
+      showPhone: currentUser.showPhone === true,
       gender: currentUser.gender || 'male',
       address: currentUser.address || ''
     });
@@ -324,6 +338,7 @@ export default function DashboardView({
         avatarUrl: profileForm.avatarUrl || '',
         facebookUrl: profileForm.facebookUrl.trim() || '',
         showFacebook: profileForm.showFacebook,
+        showPhone: profileForm.showPhone,
         gender: profileForm.gender,
         address: profileForm.address
       });
@@ -376,14 +391,25 @@ export default function DashboardView({
                 </span>
               )}
               {!isEditing && (
-                <button
-                  type="button"
-                  onClick={() => setIsEditing(true)}
-                  className="px-4 py-1.5 bg-rose-600 hover:bg-rose-500 text-white text-[11px] font-bold uppercase tracking-wider rounded-lg transition shadow-md cursor-pointer flex items-center gap-1.5"
-                >
-                  <Save className="w-3.5 h-3.5 rotate-45" />
-                  {language === 'bn' ? 'তথ্য সংশোধন' : 'Edit Profile'}
-                </button>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowQrCardModal(true)}
+                    className="px-3 py-1.5 bg-indigo-600/10 hover:bg-indigo-600/20 text-indigo-400 border border-indigo-500/20 text-[11px] font-bold uppercase tracking-wider rounded-lg transition shadow-sm cursor-pointer flex items-center gap-1.5"
+                  >
+                    <QrCode className="w-3.5 h-3.5" />
+                    {language === 'bn' ? 'স্মার্ট কিউআর কার্ড' : 'QR Donor Card'}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setIsEditing(true)}
+                    className="px-4 py-1.5 bg-rose-600 hover:bg-rose-500 text-white text-[11px] font-bold uppercase tracking-wider rounded-lg transition shadow-md cursor-pointer flex items-center gap-1.5"
+                  >
+                    <Save className="w-3.5 h-3.5 rotate-45" />
+                    {language === 'bn' ? 'তথ্য সংশোধন' : 'Edit Profile'}
+                  </button>
+                </div>
               )}
             </div>
           </div>
@@ -391,30 +417,46 @@ export default function DashboardView({
           {!isEditing ? (
             <div className="space-y-6 text-left">
               {/* Profile Overview (View Mode) */}
-              <div className="flex flex-col sm:flex-row items-center gap-5 p-5 bg-slate-950/40 border border-slate-800/80 rounded-2xl">
-                <div className="relative w-16 h-16 rounded-full bg-slate-900 border border-slate-800 flex items-center justify-center overflow-hidden shrink-0">
-                  {currentUser.avatarUrl ? (
-                    <img src={currentUser.avatarUrl} alt="Avatar" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                  ) : (
-                    <span className="text-xl font-bold text-rose-500">{currentUser.name.charAt(0).toUpperCase()}</span>
-                  )}
-                </div>
-                <div className="space-y-1.5 text-center sm:text-left">
-                  <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2.5">
-                    <h4 className="text-base font-extrabold text-slate-100">{currentUser.name}</h4>
-                    <span className="text-[10px] font-bold text-rose-400 bg-rose-500/10 px-2 py-0.5 rounded-full border border-rose-500/20 font-sans">
-                      {currentUser.bloodGroup}
-                    </span>
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-5 p-5 bg-slate-950/40 border border-slate-800/80 rounded-2xl">
+                <div className="flex flex-col sm:flex-row items-center gap-5">
+                  <div className="relative w-16 h-16 rounded-full bg-slate-900 border border-slate-800 flex items-center justify-center overflow-hidden shrink-0">
+                    {currentUser.avatarUrl ? (
+                      <img src={currentUser.avatarUrl} alt="Avatar" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                    ) : (
+                      <span className="text-xl font-bold text-rose-500">{currentUser.name.charAt(0).toUpperCase()}</span>
+                    )}
                   </div>
-                  <p className="text-xs text-slate-400 flex items-center justify-center sm:justify-start gap-1">
-                    <MapPin className="w-3.5 h-3.5 text-slate-500" />
-                    <span>{formatLocation(currentUser)}</span>
-                  </p>
+                  <div className="space-y-1.5 text-center sm:text-left">
+                    <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2.5">
+                      <h4 className="text-base font-extrabold text-slate-100">{currentUser.name}</h4>
+                      <span className="text-[10px] font-bold text-rose-400 bg-rose-500/10 px-2 py-0.5 rounded-full border border-rose-500/20 font-sans">
+                        {currentUser.bloodGroup}
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-400 flex items-center justify-center sm:justify-start gap-1">
+                      <MapPin className="w-3.5 h-3.5 text-slate-500" />
+                      <span>{formatLocation(currentUser)}</span>
+                    </p>
+                  </div>
+                </div>
+
+                {/* Gamification Tier Badge */}
+                <div className={`px-3.5 py-2 rounded-xl border ${donorTier.badgeBg} ${donorTier.badgeBorder} text-center space-y-0.5 shrink-0`}>
+                  <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 block">LEVEL {donorTier.level} • {donorXp} XP</span>
+                  <span className={`text-xs font-black ${donorTier.badgeColor} flex items-center justify-center gap-1`}>
+                    <Award className="w-3.5 h-3.5" />
+                    {language === 'bn' ? donorTier.titleBn : donorTier.title}
+                  </span>
                 </div>
               </div>
 
               {/* Grid of Profile Metadata details */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="p-4 rounded-xl bg-amber-500/5 border border-amber-500/20 space-y-1">
+                  <p className="text-[10px] font-black uppercase tracking-wider text-amber-400">Official Donor ID</p>
+                  <p className="text-sm font-mono font-black text-white">{currentUser.donorId || 'DBD-UNKNOWN'}</p>
+                </div>
+
                 <div className="p-4 rounded-xl bg-slate-950/40 border border-slate-800/60 space-y-1">
                   <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">{language === 'bn' ? 'যোগাযোগের মোবাইল নম্বর' : 'Contact Phone'}</p>
                   <p className="text-xs font-bold text-slate-200">{currentUser.phone}</p>
@@ -597,7 +639,7 @@ export default function DashboardView({
                 </div>
               </div>
 
-              <div className="flex flex-col justify-end pb-1.5 pl-1">
+              <div className="flex flex-col justify-end pb-1.5 pl-1 space-y-2">
                 <label className="flex items-center gap-3 cursor-pointer select-none">
                   <input
                     type="checkbox"
@@ -612,6 +654,26 @@ export default function DashboardView({
                       {profileForm.showFacebook 
                         ? (language === 'bn' ? 'চালু (ডিরেক্টরিতে দেখানো হবে)' : 'On (Shown on directory)') 
                         : (language === 'bn' ? 'বন্ধ (গোপন রাখা হবে)' : 'Off (Will be hidden)')}
+                    </span>
+                  </div>
+                </label>
+
+                <label className="flex items-center gap-3 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    name="showPhone"
+                    checked={profileForm.showPhone}
+                    onChange={(e) => setProfileForm(prev => ({ ...prev, showPhone: e.target.checked }))}
+                    className="w-4 h-4 rounded border-slate-800 bg-slate-950 text-rose-500 focus:ring-rose-500 focus:ring-opacity-25"
+                  />
+                  <div className="flex flex-col text-left">
+                    <span className="text-xs font-bold text-slate-300">
+                      {language === 'bn' ? 'মোবাইল নম্বর জনসমক্ষে দেখান' : 'Show Phone Publicly'}
+                    </span>
+                    <span className="text-[10px] text-slate-500">
+                      {profileForm.showPhone 
+                        ? (language === 'bn' ? 'সবাই দেখতে পাবে' : 'Visible to public') 
+                        : (language === 'bn' ? 'গোপন রাখা হয়েছে' : 'Hidden from public (Recommended)')}
                     </span>
                   </div>
                 </label>
@@ -1021,14 +1083,26 @@ export default function DashboardView({
             </button>
           </div>
 
-          {activeHistoryTab === 'donations' && !showLogForm && (
-            <button
-              onClick={() => setShowLogForm(true)}
-              className="px-4 py-2.5 bg-rose-600/10 hover:bg-rose-600/20 text-rose-400 rounded-xl text-xs font-bold border border-rose-500/20 transition shrink-0 flex items-center gap-1.5 cursor-pointer"
-            >
-              <Heart className="w-3.5 h-3.5" /> {t('dashboard.logDonationBtn')}
-            </button>
-          )}
+          <div className="flex items-center gap-2">
+            {activeHistoryTab === 'donations' && donations.length > 0 && (
+              <button
+                onClick={() => downloadCsv(`Donation_History_${currentUser.name.replace(/\s+/g, '_')}`, donations)}
+                className="px-3.5 py-2 bg-slate-950 hover:bg-slate-800 text-slate-300 rounded-xl text-xs font-bold border border-slate-800 transition shrink-0 flex items-center gap-1.5 cursor-pointer"
+              >
+                <Download className="w-3.5 h-3.5" />
+                {language === 'bn' ? 'সিএসভি ডাউনলোড' : 'Export CSV'}
+              </button>
+            )}
+
+            {activeHistoryTab === 'donations' && !showLogForm && (
+              <button
+                onClick={() => setShowLogForm(true)}
+                className="px-4 py-2 bg-rose-600/10 hover:bg-rose-600/20 text-rose-400 rounded-xl text-xs font-bold border border-rose-500/20 transition shrink-0 flex items-center gap-1.5 cursor-pointer"
+              >
+                <Heart className="w-3.5 h-3.5" /> {t('dashboard.logDonationBtn')}
+              </button>
+            )}
+          </div>
         </div>
 
         {activeHistoryTab === 'donations' ? (
@@ -1148,7 +1222,7 @@ export default function DashboardView({
                       <th className="py-3 px-4">{language === 'bn' ? 'রক্তগ্রহীতার নাম / রক্তের গ্রুপ' : 'Recipient Name / Blood Group'}</th>
                       <th className="py-3 px-4">{t('requests.hospitalName')}</th>
                       <th className="py-3 px-4">{language === 'bn' ? 'রক্তদানের তারিখ' : 'Donation Date'}</th>
-                      <th className="py-3 px-4">{language === 'bn' ? 'মন্তব্য' : 'Notes / Remarks'}</th>
+                      <th className="py-3 px-4">{language === 'bn' ? 'সনদপত্র' : 'Certificate'}</th>
                       <th className="py-3 px-4 text-right">{language === 'bn' ? 'অবস্থা' : 'Status'}</th>
                     </tr>
                   </thead>
@@ -1167,7 +1241,15 @@ export default function DashboardView({
                         <td className="py-4 px-4 text-slate-400 font-semibold">
                           {language === 'bn' ? don.donationDate.replace(/\d/g, d => '০১২৩৪৫৬৭৮৯'[parseInt(d, 10)]) : don.donationDate}
                         </td>
-                        <td className="py-4 px-4 text-slate-400 truncate max-w-xs">{don.notes || '—'}</td>
+                        <td className="py-4 px-4">
+                          <button
+                            onClick={() => setSelectedCertDonation(don)}
+                            className="px-2.5 py-1 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/20 rounded-lg text-[10px] font-bold transition flex items-center gap-1 cursor-pointer"
+                          >
+                            <Award className="w-3 h-3" />
+                            {language === 'bn' ? 'সনদ দেখুন' : 'Certificate'}
+                          </button>
+                        </td>
                         <td className="py-4 px-4 text-right">
                           <span className="px-2 py-0.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/10 text-[9px] font-bold rounded uppercase">
                             {language === 'bn' ? 'সম্পন্ন' : 'Completed'}
@@ -1261,6 +1343,23 @@ export default function DashboardView({
           </div>
         )}
       </section>
+
+      {/* Smart QR Donor Card Modal */}
+      {showQrCardModal && (
+        <DonorCardModal
+          user={currentUser}
+          onClose={() => setShowQrCardModal(false)}
+        />
+      )}
+
+      {/* Official Certificate Modal */}
+      {selectedCertDonation && (
+        <DonationCertificateModal
+          user={currentUser}
+          donation={selectedCertDonation}
+          onClose={() => setSelectedCertDonation(null)}
+        />
+      )}
     </div>
   );
 }

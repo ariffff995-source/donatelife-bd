@@ -6,9 +6,10 @@ import { api } from '../lib/api';
 import { BloodGroup, BloodRequest, User } from '../types';
 import LocationSelector from '../components/LocationSelector';
 import { BLOOD_GROUPS } from '../data/bangladesh-locations';
-import { AlertTriangle, Plus, Calendar, MapPin, Phone, Check, Copy, Share2, X, Info, Heart, ArrowRight, Map } from 'lucide-react';
+import { AlertTriangle, Plus, Calendar, MapPin, Phone, Check, Copy, Share2, X, Info, Heart, ArrowRight, Map, Sparkles } from 'lucide-react';
 import { LocationMap } from '../components/LocationMap';
 import { useLanguage } from '../contexts/LanguageContext';
+import { calculateSmartMatch } from '../lib/ai-matcher';
 
 interface EmergencyRequestsViewProps {
   currentUser: User | null;
@@ -101,7 +102,10 @@ export default function EmergencyRequestsView({
         bloodGroup: form.bloodGroup,
         division: form.division
       });
-      setMatchedCount(matchQuery.length);
+      const matchCount = Array.isArray(matchQuery)
+        ? matchQuery.length
+        : (matchQuery && Array.isArray(matchQuery.donors) ? matchQuery.donors.length : 0);
+      setMatchedCount(matchCount);
 
       setSuccess(true);
       onRefreshRequests();
@@ -409,41 +413,53 @@ Please contact the clinical guardian immediately or share! Created via *DonateLi
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {filteredRequests.map((req) => (
-              <div
-                key={req.id}
-                className="bg-slate-900 border border-slate-800/80 hover:border-slate-700/80 rounded-2xl p-6 text-left shadow-lg relative overflow-hidden flex flex-col justify-between space-y-4"
-              >
-                {/* Glow banner for extreme urgent cases (required date is today) */}
-                {req.status === 'pending' && req.requiredDate === new Date().toISOString().split('T')[0] && (
-                  <div className="absolute top-0 right-0 bg-rose-600 text-[9px] font-black tracking-widest text-white px-3.5 py-1 rounded-bl-lg uppercase">
-                    Critical: Today
-                  </div>
-                )}
+            {filteredRequests.map((req) => {
+              const aiMatch = currentUser ? calculateSmartMatch(currentUser, req) : null;
 
-                <div className="space-y-4">
-                  <div className="flex justify-between items-start gap-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 rounded-xl bg-rose-500/10 flex items-center justify-center font-extrabold text-lg text-rose-400 border border-rose-500/20">
-                        {req.bloodGroup}
+              return (
+                <div
+                  key={req.id}
+                  className="bg-slate-900 border border-slate-800/80 hover:border-slate-700/80 rounded-2xl p-6 text-left shadow-lg relative overflow-hidden flex flex-col justify-between space-y-4"
+                >
+                  {/* Glow banner for extreme urgent cases */}
+                  {req.status === 'pending' && req.requiredDate === new Date().toISOString().split('T')[0] && (
+                    <div className="absolute top-0 right-0 bg-rose-600 text-[9px] font-black tracking-widest text-white px-3.5 py-1 rounded-bl-lg uppercase">
+                      Critical: Today
+                    </div>
+                  )}
+
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-start gap-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 rounded-xl bg-rose-500/10 flex items-center justify-center font-extrabold text-lg text-rose-400 border border-rose-500/20">
+                          {req.bloodGroup}
+                        </div>
+                        <div>
+                          <h4 className="text-sm font-bold text-slate-200">{req.patientName}</h4>
+                          <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                            <span className={`inline-flex px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider ${
+                              req.status === 'pending' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/15' :
+                              req.status === 'fulfilled' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/15' :
+                              'bg-slate-800 text-slate-500'
+                            }`}>
+                              {req.status}
+                            </span>
+
+                            {aiMatch && aiMatch.matchScore > 0 && (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-extrabold bg-indigo-500/15 text-indigo-300 border border-indigo-500/25" title={aiMatch.reasons.join(' • ')}>
+                                <Sparkles className="w-3 h-3 text-indigo-400" />
+                                {aiMatch.matchScore}% AI Match
+                              </span>
+                            )}
+                          </div>
+                        </div>
                       </div>
-                      <div>
-                        <h4 className="text-sm font-bold text-slate-200">{req.patientName}</h4>
-                        <span className={`inline-flex px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider mt-1 ${
-                          req.status === 'pending' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/15' :
-                          req.status === 'fulfilled' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/15' :
-                          'bg-slate-800 text-slate-500'
-                        }`}>
-                          {req.status}
-                        </span>
+
+                      <div className="text-right shrink-0">
+                        <p className="text-xs font-black text-rose-400">{req.unitsNeeded} Bottles</p>
+                        <p className="text-[10px] text-slate-500">Needed</p>
                       </div>
                     </div>
-
-                    <div className="text-right shrink-0">
-                      <p className="text-xs font-black text-rose-400">{req.unitsNeeded} Bottles</p>
-                      <p className="text-[10px] text-slate-500">Needed</p>
-                    </div>
-                  </div>
 
                   <p className="text-xs text-slate-400 leading-relaxed line-clamp-3 bg-slate-950/40 p-3 rounded-xl border border-slate-950">
                     "{req.reason}"
@@ -490,7 +506,8 @@ Please contact the clinical guardian immediately or share! Created via *DonateLi
                   </button>
                 </div>
               </div>
-            ))}
+            );
+          })}
           </div>
         )}
       </div>

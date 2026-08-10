@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import Image from 'next/image';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Heart,
@@ -32,7 +33,9 @@ import SearchableSelect from '../components/SearchableSelect';
 import { BLOOD_GROUPS } from '../data/bangladesh-locations';
 import heroImage from '../assets/images/medical_hero_illustration_1783087625061.jpg';
 import { useLanguage } from '../contexts/LanguageContext';
+import { useAppContext } from '../providers';
 import LiveImpactTelemetry from '../components/LiveImpactTelemetry';
+
 
 interface HomeViewProps {
   onNavigate: (tabId: string) => void;
@@ -44,6 +47,7 @@ interface HomeViewProps {
 
 export default function HomeView({ onNavigate, onInstantSearch, activeRequests, stats, currentUser }: HomeViewProps) {
   const { language } = useLanguage();
+  const { isFeatureHidden } = useAppContext();
   const latestRequests = activeRequests.filter(r => r.status === 'pending').slice(0, 3);
 
   // FAQ Accordion Active Index State
@@ -211,15 +215,13 @@ export default function HomeView({ onNavigate, onInstantSearch, activeRequests, 
           >
             <div className="absolute inset-0 bg-gradient-to-r from-rose-500/20 to-red-500/10 rounded-xl sm:rounded-2xl filter blur-xl opacity-30 group-hover:opacity-50 transition-opacity duration-300"></div>
             <div className="relative p-1 bg-slate-950/80 border border-slate-800 rounded-2xl sm:rounded-3xl overflow-hidden shadow-2xl backdrop-blur-md max-w-[150px] sm:max-w-md w-full">
-              <img
-                src={typeof heroImage === 'object' && heroImage && 'src' in heroImage ? (heroImage as any).src : (heroImage as any)}
+              <Image
+                src={heroImage}
                 alt="DonateLife BD Medical Network Illustration"
-                loading="lazy"
-                decoding="async"
+                priority
                 width={400}
                 height={300}
                 className="w-full h-auto object-cover rounded-xl sm:rounded-2xl border border-slate-900 shadow-inner group-hover:scale-[1.01] transition-transform duration-500"
-                referrerPolicy="no-referrer"
               />
               <div className="absolute bottom-2 left-2 right-2 sm:bottom-3 sm:left-3 sm:right-3 bg-slate-950/90 border border-slate-800 p-1.5 sm:p-3.5 rounded-lg sm:rounded-xl flex items-center gap-1.5 sm:gap-3">
                 <div className="w-5 h-5 sm:w-8 sm:h-8 rounded-md sm:rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 shrink-0">
@@ -425,21 +427,24 @@ export default function HomeView({ onNavigate, onInstantSearch, activeRequests, 
               title: language === 'bn' ? 'হাসপাতাল নেটওয়ার্ক' : 'Hospitals Network',
               desc: language === 'bn' ? 'রক্ত সঞ্চালন সুবিধাসম্পন্ন সকল হাসপাতাল' : 'Transfusion-equipped hospital centers across 64 districts.',
               icon: Building2,
-              tab: 'directories',
+              tab: 'hospitals',
+              featureKey: 'hospitals',
               color: 'from-blue-500/20 to-sky-500/10 border-blue-500/30 text-blue-400'
             },
             {
               title: language === 'bn' ? 'ব্লাড ব্যাংক ডিরেক্টরি' : 'Blood Bank Directory',
               desc: language === 'bn' ? 'কেন্দ্রীয় ও আঞ্চলিক ব্লাড ব্যাংক তথ্য' : 'Central & regional official blood repos with stock telemetry.',
               icon: Droplet,
-              tab: 'directories',
+              tab: 'blood-banks',
+              featureKey: 'blood-banks',
               color: 'from-rose-500/20 to-red-500/10 border-rose-500/30 text-rose-400'
             },
             {
               title: language === 'bn' ? '২৪/৭ অ্যাম্বুলেন্স বহর' : '24/7 Ambulance Fleet',
               desc: language === 'bn' ? 'জরুরী আইসিইউ ও সাধারণ অ্যাম্বুলেন্স' : 'Emergency ICU & general ambulance contacts across Bangladesh.',
               icon: Truck,
-              tab: 'directories',
+              tab: 'ambulances',
+              featureKey: 'ambulances',
               color: 'from-amber-500/20 to-orange-500/10 border-amber-500/30 text-amber-400'
             },
             {
@@ -449,7 +454,7 @@ export default function HomeView({ onNavigate, onInstantSearch, activeRequests, 
               tab: 'search',
               color: 'from-emerald-500/20 to-teal-500/10 border-emerald-500/30 text-emerald-400'
             }
-          ].map((dir, idx) => (
+          ].filter(dir => !dir.featureKey || !isFeatureHidden(dir.featureKey)).map((dir, idx) => (
             <div
               key={idx}
               onClick={() => onNavigate(dir.tab)}
