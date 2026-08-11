@@ -328,5 +328,83 @@ export const donorFavorites = pgTable(
   ]
 );
 
+// 17. Volunteers Table
+export const volunteers = pgTable('volunteers', {
+  id: text('id').primaryKey(),
+  userId: text('user_id').references(() => users.id, { onDelete: 'cascade' }),
+  name: text('name').notNull(),
+  email: text('email').notNull(),
+  phone: text('phone').notNull(),
+  division: text('division').notNull(),
+  district: text('district').notNull(),
+  upazila: text('upazila').notNull(),
+  role: text('role').default('Regional Coordinator').notNull(),
+  status: text('status').default('Active').notNull(),
+  joinedAt: timestamp('joined_at').defaultNow().notNull(),
+});
+
+// 18. Testimonials Table
+export const testimonials = pgTable('testimonials', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  role: text('role').notNull(),
+  comment: text('comment').notNull(),
+  rating: integer('rating').default(5).notNull(),
+  avatarUrl: text('avatar_url'),
+  isApproved: boolean('is_approved').default(true).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+// 19. Reports Table
+export const reports = pgTable('reports', {
+  id: text('id').primaryKey(),
+  title: text('title').notNull(),
+  type: text('type').notNull(),
+  generatedBy: text('generated_by').notNull(),
+  fileUrl: text('file_url'),
+  status: text('status').default('Completed').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+// 20. Backups Table
+export const backups = pgTable('backups', {
+  id: text('id').primaryKey(),
+  filename: text('filename').notNull(),
+  sizeBytes: integer('size_bytes').notNull(),
+  type: text('type').default('Automated Daily').notNull(),
+  status: text('status').default('Success').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+// 21. System Settings Table
+export const systemSettings = pgTable('system_settings', {
+  id: text('id').primaryKey(),
+  settingKey: text('setting_key').notNull().unique(),
+  settingValue: jsonb('setting_value').notNull(),
+  updatedBy: text('updated_by'),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// 22. SEO Settings Table
+export const seoSettings = pgTable('seo_settings', {
+  id: text('id').primaryKey(),
+  pageRoute: text('page_route').notNull().unique(),
+  metaTitle: text('meta_title').notNull(),
+  metaDescription: text('meta_description').notNull(),
+  ogImage: text('og_image'),
+  keywords: jsonb('keywords'),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// 23. QR Cards & Certificates Table
+export const donorCertificates = pgTable('donor_certificates', {
+  id: text('id').primaryKey(),
+  userId: text('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  certificateCode: text('certificate_code').notNull().unique(),
+  title: text('title').notNull(),
+  issuedAt: timestamp('issued_at').defaultNow().notNull(),
+  pdfUrl: text('pdf_url'),
+});
+
 
 

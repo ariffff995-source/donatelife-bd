@@ -442,6 +442,22 @@ export const api = {
 
     manualSeed(): Promise<{ success: boolean; message: string }> {
       return request('/admin/seed', { method: 'POST' });
+    },
+
+    volunteers(): Promise<any[]> {
+      return request('/admin/volunteers');
+    },
+
+    testimonials(): Promise<any[]> {
+      return request('/admin/testimonials');
+    },
+
+    reports(): Promise<any[]> {
+      return request('/admin/reports');
+    },
+
+    systemMonitoring(): Promise<any> {
+      return request('/admin/system-monitoring');
     }
   },
 
