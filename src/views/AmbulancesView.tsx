@@ -14,6 +14,7 @@ import { LocationMap } from '../components/LocationMap';
 import SearchableSelect from '../components/SearchableSelect';
 import { getEnglishLocationValue } from '../utils/locationHelper';
 import { useAppContext } from '../providers';
+import { AmbulanceBookingModal } from '../components/AmbulanceBookingModal';
 
 export default function AmbulancesView() {
   const { language, t, translateLocation, formatLocation } = useLanguage();
@@ -34,6 +35,7 @@ export default function AmbulancesView() {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [selectedLocation, setSelectedLocation] = useState<{ query: string; name: string } | null>(null);
   const [detailsAmbulance, setDetailsAmbulance] = useState<Ambulance | null>(null);
+  const [bookingAmbulance, setBookingAmbulance] = useState<Ambulance | null>(null);
 
   // Review states
   const [ratingInput, setRatingInput] = useState(5);
@@ -279,19 +281,26 @@ export default function AmbulancesView() {
                     </button>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-3 gap-2">
                     <button
                       onClick={() => setDetailsAmbulance(amb)}
-                      className="py-2.5 px-3 bg-slate-950 hover:bg-slate-800 border border-slate-800 text-xs font-bold text-slate-200 rounded-xl transition text-center cursor-pointer"
+                      className="py-2.5 px-2 bg-slate-950 hover:bg-slate-800 border border-slate-800 text-[11px] font-bold text-slate-200 rounded-xl transition text-center cursor-pointer"
                     >
-                      View Details
+                      Details
+                    </button>
+                    <button
+                      onClick={() => setBookingAmbulance(amb)}
+                      className="py-2.5 px-2 bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 text-white text-[11px] font-black uppercase rounded-xl transition text-center flex items-center justify-center gap-1 cursor-pointer shadow-md shadow-rose-950/30"
+                    >
+                      <Truck className="w-3 h-3" />
+                      Book Now
                     </button>
                     <a
                       href={`tel:${amb.contactPhone}`}
-                      className="py-2.5 px-3 bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-black uppercase rounded-xl transition text-center flex items-center justify-center gap-1"
+                      className="py-2.5 px-2 bg-amber-500 hover:bg-amber-400 text-slate-950 text-[11px] font-black uppercase rounded-xl transition text-center flex items-center justify-center gap-1"
                     >
-                      <Phone className="w-3.5 h-3.5" />
-                      Call Dispatch
+                      <Phone className="w-3 h-3" />
+                      Call
                     </a>
                   </div>
                 </div>
@@ -488,6 +497,14 @@ export default function AmbulancesView() {
           </div>
         )}
       </AnimatePresence>
+      {/* Ambulance Booking Modal */}
+      {bookingAmbulance && (
+        <AmbulanceBookingModal
+          ambulance={bookingAmbulance}
+          isOpen={Boolean(bookingAmbulance)}
+          onClose={() => setBookingAmbulance(null)}
+        />
+      )}
     </div>
   );
 }

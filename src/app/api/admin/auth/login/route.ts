@@ -124,12 +124,19 @@ export async function POST(req: NextRequest) {
       isAdmin: true,
     });
 
-    return NextResponse.json({
+    const res = NextResponse.json({
       token,
       admin: authenticatedAdmin,
     });
-  } catch (error) {
-    console.error('Admin login error:', error);
-    return NextResponse.json({ error: 'Internal server error during administrator login.' }, { status: 500 });
+
+    res.headers.append('Set-Cookie', `token=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=86400`);
+    res.headers.append('Set-Cookie', `donatelife_admin_token=${token}; Path=/; SameSite=Lax; Max-Age=86400`);
+    return res;
+  } catch (error: any) {
+    console.error('[ADMIN LOGIN ERROR]', error);
+    return NextResponse.json(
+      { error: 'Internal server error during administrator login.', details: error?.message || String(error) },
+      { status: 500 }
+    );
   }
 }

@@ -4,11 +4,13 @@ import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { Heart, Bell, User as UserIcon, LogOut, Shield, Menu, X, Check } from 'lucide-react';
+import Link from 'next/link';
 import { User, Notification } from '../types';
 import { api } from '../lib/api';
 import { useLanguage } from '../contexts/LanguageContext';
 
 import { useAppContext } from '../providers';
+import { GlobalSearch } from './GlobalSearch';
 
 interface NavbarProps {
   currentUser: User | null;
@@ -109,9 +111,9 @@ export default function Navbar({
       <nav aria-label="Main Navigation" className="max-w-7xl mx-auto flex items-center justify-between">
         
         {/* Logo */}
-        <a 
-          href="#home"
-          onClick={(e) => { e.preventDefault(); handleLinkClick('home'); }}
+        <Link 
+          href="/"
+          onClick={() => handleLinkClick('home')}
           className="flex items-center gap-2 sm:gap-2.5 cursor-pointer group text-left min-h-[40px] sm:min-h-[44px]"
           id="nav-logo"
           aria-label="DonateLife BD Emergency Blood Network Home"
@@ -127,15 +129,15 @@ export default function Navbar({
               {t('common.tagline')}
             </span>
           </div>
-        </a>
+        </Link>
 
         {/* Desktop Nav Links */}
         <ul className="hidden lg:flex items-center gap-1.5 list-none m-0 p-0">
           {navLinks.map((link) => (
             <li key={link.id}>
-              <a
-                href={`#${link.id}`}
-                onClick={(e) => { e.preventDefault(); handleLinkClick(link.id); }}
+              <Link
+                href={link.id === 'home' ? '/' : `/${link.id}`}
+                onClick={() => handleLinkClick(link.id)}
                 aria-current={activeTab === link.id ? 'page' : undefined}
                 className={`inline-block px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
                   activeTab === link.id
@@ -144,7 +146,7 @@ export default function Navbar({
                 }`}
               >
                 {t(link.labelKey)}
-              </a>
+              </Link>
             </li>
           ))}
         </ul>
@@ -152,6 +154,9 @@ export default function Navbar({
         {/* Action Controls */}
         <div className="flex items-center gap-1.5 sm:gap-3">
           
+          {/* Global Search Button */}
+          <GlobalSearch onNavigate={handleLinkClick} />
+
           {/* Language Switcher */}
           <button
             onClick={() => setLanguage(language === 'en' ? 'bn' : 'en')}
@@ -370,8 +375,9 @@ export default function Navbar({
                   {navLinks.map((link) => {
                     const isActive = activeTab === link.id;
                     return (
-                      <button
+                      <Link
                         key={link.id}
+                        href={link.id === 'home' ? '/' : `/${link.id}`}
                         onClick={() => handleLinkClick(link.id)}
                         className={`w-full text-left px-3.5 py-2.5 min-h-[44px] rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center justify-between cursor-pointer relative ${
                           isActive
@@ -391,7 +397,7 @@ export default function Navbar({
                         {isActive && (
                           <span className="relative z-10 w-2 h-2 rounded-full bg-rose-500 shadow-sm shadow-rose-500" />
                         )}
-                      </button>
+                      </Link>
                     );
                   })}
 

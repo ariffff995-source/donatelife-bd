@@ -57,7 +57,7 @@ export default function PageShell({ children }: { children: React.ReactNode }) {
       </div>
 
       {/* Structured Footer Column */}
-      <Footer onNavigate={setActiveTab} />
+      {!pathname?.startsWith('/admin') && <Footer onNavigate={setActiveTab} />}
     </div>
   );
 }

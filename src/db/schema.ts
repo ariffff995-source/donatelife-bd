@@ -13,6 +13,8 @@ export const users = pgTable(
     district: text('district').notNull(),
     upazila: text('upazila').notNull(),
     policeStation: text('police_station'),
+    latitude: text('latitude'),
+    longitude: text('longitude'),
     lastDonationDate: text('last_donation_date'),
     isAvailable: boolean('is_available').default(true).notNull(),
     isAdmin: boolean('is_admin').default(false).notNull(),
@@ -36,6 +38,12 @@ export const users = pgTable(
     showPhone: boolean('show_phone').default(false).notNull(),
     about: text('about'),
     age: integer('age'),
+    reputationScore: integer('reputation_score').default(0).notNull(),
+    totalDonationsCount: integer('total_donations_count').default(0).notNull(),
+    successfulDonationsCount: integer('successful_donations_count').default(0).notNull(),
+    responseRate: integer('response_rate').default(100).notNull(),
+    acceptanceRate: integer('acceptance_rate').default(100).notNull(),
+    donationStreak: integer('donation_streak').default(0).notNull(),
     notifyEmail: boolean('notify_email').default(true).notNull(),
     notifySms: boolean('notify_sms').default(true).notNull(),
     notifyPush: boolean('notify_push').default(true).notNull(),
@@ -66,6 +74,12 @@ export const requests = pgTable(
     reason: text('reason').notNull(),
     status: text('status').default('pending').notNull(),
     requiredDate: text('required_date').notNull(),
+    timeline: jsonb('timeline'),
+    matchedDonorId: text('matched_donor_id'),
+    donorAcceptedAt: timestamp('donor_accepted_at'),
+    donatedAt: timestamp('donated_at'),
+    completedAt: timestamp('completed_at'),
+    cancelledAt: timestamp('cancelled_at'),
     createdAt: timestamp('created_at').defaultNow().notNull(),
   },
   (table) => [
@@ -125,6 +139,14 @@ export const hospitals = pgTable(
     contactPhone: text('contact_phone').notNull(),
     services: jsonb('services').notNull(),
     type: text('type').notNull(),
+    icuBedsTotal: integer('icu_beds_total').default(10).notNull(),
+    icuBedsAvailable: integer('icu_beds_available').default(3).notNull(),
+    generalBedsTotal: integer('general_beds_total').default(100).notNull(),
+    generalBedsAvailable: integer('general_beds_available').default(25).notNull(),
+    emergencyBedsTotal: integer('emergency_beds_total').default(20).notNull(),
+    emergencyBedsAvailable: integer('emergency_beds_available').default(5).notNull(),
+    bedAvailabilityLastUpdated: timestamp('bed_availability_last_updated').defaultNow().notNull(),
+    isVerified: boolean('is_verified').default(true).notNull(),
   },
   (table) => [
     index('hospitals_location_idx').on(table.division, table.district),
@@ -282,5 +304,20 @@ export const otps = pgTable(
     index('otps_email_idx').on(table.email),
   ]
 );
+
+// 16. Favorite Donors Table (Prevent Duplicates)
+export const donorFavorites = pgTable(
+  'donor_favorites',
+  {
+    id: text('id').primaryKey(),
+    userId: text('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+    favoriteDonorId: text('favorite_donor_id').notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  },
+  (table) => [
+    index('donor_favorites_user_id_idx').on(table.userId),
+  ]
+);
+
 
 

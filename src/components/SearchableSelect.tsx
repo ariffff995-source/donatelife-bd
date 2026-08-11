@@ -286,8 +286,9 @@ export default function SearchableSelect({
                     ref={el => { optionRefs.current[idx] = el; }}
                     type="button"
                     onMouseDown={(e) => {
-                      // Prevent focus loss from search input before click handler fires
                       e.preventDefault();
+                      e.stopPropagation();
+                      handleSelect(opt.value);
                     }}
                     onClick={(e) => {
                       e.preventDefault();

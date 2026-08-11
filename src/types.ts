@@ -10,6 +10,8 @@ export interface User {
   district: string;
   upazila: string;
   policeStation?: string | null;
+  latitude?: string | null;
+  longitude?: string | null;
   lastDonationDate: string | null; // ISO string or date string
   isAvailable: boolean;
   isAdmin: boolean;
@@ -31,6 +33,13 @@ export interface User {
   gender?: 'male' | 'female' | 'other' | string;
   address?: string;
   favoriteAmbulances?: string[];
+  favoriteDonors?: string[];
+  reputationScore?: number;
+  totalDonationsCount?: number;
+  successfulDonationsCount?: number;
+  responseRate?: number;
+  acceptanceRate?: number;
+  donationStreak?: number;
 }
 
 export interface DonationHistory {
@@ -42,6 +51,15 @@ export interface DonationHistory {
   hospitalName: string;
   notes?: string;
   createdAt: string;
+}
+
+export interface RequestTimelineEvent {
+  status: string;
+  label: string;
+  labelBn?: string;
+  timestamp: string;
+  note?: string;
+  updatedBy?: string;
 }
 
 export interface BloodRequest {
@@ -57,9 +75,15 @@ export interface BloodRequest {
   policeStation?: string | null;
   contactPhone: string;
   reason: string;
-  status: 'pending_approval' | 'pending' | 'rejected' | 'fulfilled' | 'cancelled';
+  status: 'pending_approval' | 'pending' | 'approved' | 'matched' | 'accepted' | 'donated' | 'fulfilled' | 'cancelled' | 'rejected' | string;
   requiredDate: string;
   createdAt: string;
+  timeline?: RequestTimelineEvent[];
+  matchedDonorId?: string | null;
+  donorAcceptedAt?: string | null;
+  donatedAt?: string | null;
+  completedAt?: string | null;
+  cancelledAt?: string | null;
 }
 
 export interface Hospital {
@@ -73,6 +97,14 @@ export interface Hospital {
   contactPhone: string;
   services: string[];
   type: 'government' | 'private';
+  icuBedsTotal?: number;
+  icuBedsAvailable?: number;
+  generalBedsTotal?: number;
+  generalBedsAvailable?: number;
+  emergencyBedsTotal?: number;
+  emergencyBedsAvailable?: number;
+  bedAvailabilityLastUpdated?: string;
+  isVerified?: boolean;
 }
 
 export interface BloodBank {
@@ -93,18 +125,22 @@ export interface Notification {
   title: string;
   message: string;
   isRead: boolean;
-  type: 'request_match' | 'system' | 'alert';
+  type: 'request_match' | 'system' | 'alert' | string;
   createdAt: string;
   relatedId?: string;
 }
 
 export interface PlatformStats {
   totalDonors: number;
-  totalRequests: number;
   activeRequests: number;
   totalHospitals: number;
   totalBloodBanks: number;
   successfulDonations: number;
+  verifiedDonors?: number;
+  totalRequests?: number;
+  monthlyGrowth?: Array<{ month: string; donors: number; requests: number }>;
+  divisionStats?: Array<{ division: string; donors: number; requests: number }>;
+  districtStats?: Array<{ district: string; donors: number }>;
   bloodGroupDistribution?: Record<string, number>;
   requestStatusDistribution?: {
     pending_approval: number;
@@ -112,6 +148,9 @@ export interface PlatformStats {
     fulfilled: number;
     cancelled: number;
     rejected: number;
+    approved?: number;
+    matched?: number;
+    accepted?: number;
   };
 }
 
@@ -253,4 +292,27 @@ export interface FeatureSetting {
   updatedBy?: string | null;
   updatedAt?: string;
 }
+
+export interface GlobalSearchResultItem {
+  id: string;
+  type: 'donor' | 'request' | 'hospital' | 'blood_bank' | 'ambulance' | 'volunteer' | 'blog' | 'faq';
+  title: string;
+  subtitle: string;
+  details?: string;
+  badge?: string;
+  url?: string;
+  data?: any;
+}
+
+export interface GlobalSearchResults {
+  donors: GlobalSearchResultItem[];
+  requests: GlobalSearchResultItem[];
+  hospitals: GlobalSearchResultItem[];
+  bloodBanks: GlobalSearchResultItem[];
+  ambulances: GlobalSearchResultItem[];
+  volunteers: GlobalSearchResultItem[];
+  blogs: GlobalSearchResultItem[];
+  faqs: GlobalSearchResultItem[];
+}
+
 

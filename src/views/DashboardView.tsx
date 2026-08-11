@@ -12,7 +12,7 @@ import { LastDonationCard } from '../components/LastDonationCard';
 import { DonorCardModal } from '../components/DonorCardModal';
 import { DonationCertificateModal } from '../components/DonationCertificateModal';
 import { calculateDonorXP, getDonorTier, getTierProgress, getDonorBadges } from '../utils/gamification';
-import { downloadCsv } from '../utils/exportHelper';
+import { downloadCsv, downloadExcel, downloadPdf } from '../utils/exportHelper';
 
 interface DashboardViewProps {
   currentUser: User;
@@ -1085,13 +1085,29 @@ export default function DashboardView({
 
           <div className="flex items-center gap-2">
             {activeHistoryTab === 'donations' && donations.length > 0 && (
-              <button
-                onClick={() => downloadCsv(`Donation_History_${currentUser.name.replace(/\s+/g, '_')}`, donations)}
-                className="px-3.5 py-2 bg-slate-950 hover:bg-slate-800 text-slate-300 rounded-xl text-xs font-bold border border-slate-800 transition shrink-0 flex items-center gap-1.5 cursor-pointer"
-              >
-                <Download className="w-3.5 h-3.5" />
-                {language === 'bn' ? 'সিএসভি ডাউনলোড' : 'Export CSV'}
-              </button>
+              <div className="flex items-center gap-1.5">
+                <button
+                  onClick={() => downloadCsv(`Donation_History_${currentUser.name.replace(/\s+/g, '_')}`, donations)}
+                  className="px-3 py-1.5 bg-slate-950 hover:bg-slate-800 text-slate-300 rounded-xl text-[11px] font-bold border border-slate-800 transition shrink-0 flex items-center gap-1 cursor-pointer"
+                >
+                  <Download className="w-3 h-3 text-emerald-400" />
+                  CSV
+                </button>
+                <button
+                  onClick={() => downloadExcel(`Donation_History_${currentUser.name.replace(/\s+/g, '_')}`, donations)}
+                  className="px-3 py-1.5 bg-slate-950 hover:bg-slate-800 text-slate-300 rounded-xl text-[11px] font-bold border border-slate-800 transition shrink-0 flex items-center gap-1 cursor-pointer"
+                >
+                  <Download className="w-3 h-3 text-indigo-400" />
+                  Excel
+                </button>
+                <button
+                  onClick={() => downloadPdf(`Donation_History_${currentUser.name.replace(/\s+/g, '_')}`, `Donation History - ${currentUser.name}`, [{ header: 'Recipient', key: 'recipientName' }, { header: 'Hospital', key: 'hospitalName' }, { header: 'Group', key: 'bloodGroup' }, { header: 'Date', key: 'donationDate' }], donations)}
+                  className="px-3 py-1.5 bg-slate-950 hover:bg-slate-800 text-slate-300 rounded-xl text-[11px] font-bold border border-slate-800 transition shrink-0 flex items-center gap-1 cursor-pointer"
+                >
+                  <Download className="w-3 h-3 text-rose-400" />
+                  PDF
+                </button>
+              </div>
             )}
 
             {activeHistoryTab === 'donations' && !showLogForm && (

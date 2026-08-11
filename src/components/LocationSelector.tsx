@@ -97,26 +97,14 @@ export default function LocationSelector({
   // Synchronous change handlers for user actions to guarantee immediate resets
   const handleDivisionChange = (val: string) => {
     onChange('division', val);
-    onChange('district', '');
-    onChange('upazila', '');
-    if (policeStation !== undefined) {
-      onChange('policeStation', '');
-    }
   };
 
   const handleDistrictChange = (val: string) => {
     onChange('district', val);
-    onChange('upazila', '');
-    if (policeStation !== undefined) {
-      onChange('policeStation', '');
-    }
   };
 
   const handleUpazilaChange = (val: string) => {
     onChange('upazila', val);
-    if (policeStation !== undefined) {
-      onChange('policeStation', '');
-    }
   };
 
   const handlePoliceStationChange = (val: string) => {

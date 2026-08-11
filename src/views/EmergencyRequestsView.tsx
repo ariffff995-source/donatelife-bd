@@ -10,6 +10,8 @@ import { AlertTriangle, Plus, Calendar, MapPin, Phone, Check, Copy, Share2, X, I
 import { LocationMap } from '../components/LocationMap';
 import { useLanguage } from '../contexts/LanguageContext';
 import { calculateSmartMatch } from '../lib/ai-matcher';
+import { BloodRequestTimeline } from '../components/BloodRequestTimeline';
+import { SocialShareModal } from '../components/SocialShareModal';
 
 interface EmergencyRequestsViewProps {
   currentUser: User | null;
@@ -474,6 +476,18 @@ Please contact the clinical guardian immediately or share! Created via *DonateLi
                       <Calendar className="w-4 h-4 text-slate-500 shrink-0" />
                       <span>Transfusion Date: <strong className="text-rose-300">{req.requiredDate}</strong></span>
                     </div>
+                  </div>
+
+                  {/* Request Lifecycle Timeline Tracker */}
+                  <div className="pt-2 border-t border-slate-800/60">
+                    <BloodRequestTimeline request={req} onUpdateStatus={async (status) => {
+                      try {
+                        await api.requests.updateStatus(req.id, status as any);
+                        onRefreshRequests();
+                      } catch (err: any) {
+                        alert(err.message || 'Failed to update status');
+                      }
+                    }} />
                   </div>
                 </div>
 

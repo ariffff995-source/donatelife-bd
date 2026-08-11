@@ -13,6 +13,8 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { LocationMap } from '../components/LocationMap';
 import SearchableSelect from '../components/SearchableSelect';
 import { getEnglishLocationValue } from '../utils/locationHelper';
+import { HospitalBedModal } from '../components/HospitalBedModal';
+import { Activity } from 'lucide-react';
 
 export default function HospitalsView() {
   const { language, t, translateLocation, formatLocation } = useLanguage();
@@ -30,6 +32,7 @@ export default function HospitalsView() {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [selectedLocation, setSelectedLocation] = useState<{ query: string; name: string } | null>(null);
   const [detailsHospital, setDetailsHospital] = useState<Hospital | null>(null);
+  const [bedModalHospital, setBedModalHospital] = useState<Hospital | null>(null);
 
   const fetchHospitals = async () => {
     setLoading(true);
@@ -219,19 +222,26 @@ export default function HospitalsView() {
                     </button>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-3 gap-2">
                     <button
                       onClick={() => setDetailsHospital(hosp)}
-                      className="py-2.5 px-3 bg-slate-950 hover:bg-slate-800 border border-slate-800 text-xs font-bold text-slate-200 rounded-xl transition text-center cursor-pointer"
+                      className="py-2.5 px-2 bg-slate-950 hover:bg-slate-800 border border-slate-800 text-[11px] font-bold text-slate-200 rounded-xl transition text-center cursor-pointer"
                     >
-                      View Details
+                      Details
+                    </button>
+                    <button
+                      onClick={() => setBedModalHospital(hosp)}
+                      className="py-2.5 px-2 bg-cyan-600/10 hover:bg-cyan-600/20 border border-cyan-500/20 text-cyan-400 text-[11px] font-bold rounded-xl transition text-center flex items-center justify-center gap-1 cursor-pointer"
+                    >
+                      <Activity className="w-3 h-3" />
+                      ICU Beds
                     </button>
                     <a
                       href={`tel:${hosp.contactPhone}`}
-                      className="py-2.5 px-3 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl transition text-center flex items-center justify-center gap-1"
+                      className="py-2.5 px-2 bg-indigo-600 hover:bg-indigo-500 text-white text-[11px] font-bold rounded-xl transition text-center flex items-center justify-center gap-1"
                     >
-                      <Phone className="w-3.5 h-3.5" />
-                      Call Emergency
+                      <Phone className="w-3 h-3" />
+                      Call
                     </a>
                   </div>
                 </div>
@@ -367,6 +377,15 @@ export default function HospitalsView() {
           </div>
         )}
       </AnimatePresence>
+      {/* Hospital Bed Availability Modal */}
+      {bedModalHospital && (
+        <HospitalBedModal
+          hospital={bedModalHospital}
+          isOpen={Boolean(bedModalHospital)}
+          onClose={() => setBedModalHospital(null)}
+          isAdmin={true}
+        />
+      )}
     </div>
   );
 }

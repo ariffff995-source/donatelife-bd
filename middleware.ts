@@ -10,9 +10,9 @@ export function middleware(request: NextRequest) {
     response.headers.set('X-Robots-Tag', 'noindex, nofollow');
   }
 
-  // Protect /admin routes (excluding /admin-login)
-  if (pathname.startsWith('/admin') && !pathname.startsWith('/admin-login')) {
-    const adminToken = request.cookies.get('donatelife_admin_token')?.value;
+  // Protect /admin routes (excluding /admin-login and /api)
+  if (pathname.startsWith('/admin') && !pathname.startsWith('/admin-login') && !pathname.startsWith('/api')) {
+    const adminToken = request.cookies.get('donatelife_admin_token')?.value || request.cookies.get('token')?.value;
 
     if (!adminToken) {
       const loginUrl = new URL('/admin-login', request.url);

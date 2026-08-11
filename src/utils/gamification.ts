@@ -197,3 +197,101 @@ export function getDonorBadges(user: User, donationCount: number = 0): DonorBadg
 
   return badges;
 }
+
+export interface ReputationBadge {
+  tier: 'Bronze' | 'Silver' | 'Gold' | 'Platinum';
+  tierBn: string;
+  badgeEmoji: string;
+  color: string;
+  bgColor: string;
+  borderColor: string;
+  score: number;
+}
+
+export function calculateReputationScore(
+  user: User | any,
+  donationCount: number = 0
+): number {
+  let score = user.reputationScore || 0;
+
+  if (score === 0) {
+    const totalDonations = donationCount || user.totalDonationsCount || 0;
+    const successfulDonations = user.successfulDonationsCount || totalDonations;
+
+    score += totalDonations * 50; // Total donations (+50 each)
+    score += successfulDonations * 100; // Successful donations (+100 each)
+
+    // Verification status (+50)
+    if (user.isVerified || user.isDonorVerified || user.verificationStatus === 'approved') {
+      score += 50;
+    }
+
+    // Response time (+20)
+    if ((user.responseRate ?? 100) >= 80) {
+      score += 20;
+    }
+
+    // Acceptance rate (+30)
+    if ((user.acceptanceRate ?? 100) >= 80) {
+      score += 30;
+    }
+
+    // Profile completion (+20)
+    if (user.avatarUrl && user.address && user.phone) {
+      score += 20;
+    }
+
+    // Last Active (+10)
+    if (user.isAvailable) {
+      score += 10;
+    }
+  }
+
+  return score;
+}
+
+export function getReputationBadge(score: number): ReputationBadge {
+  if (score >= 801) {
+    return {
+      tier: 'Platinum',
+      tierBn: 'প্ল্যাটিনাম',
+      badgeEmoji: '💎',
+      color: 'text-cyan-300',
+      bgColor: 'bg-cyan-500/10',
+      borderColor: 'border-cyan-500/30',
+      score
+    };
+  }
+  if (score >= 401) {
+    return {
+      tier: 'Gold',
+      tierBn: 'গোল্ড',
+      badgeEmoji: '🥇',
+      color: 'text-amber-400',
+      bgColor: 'bg-amber-500/10',
+      borderColor: 'border-amber-500/30',
+      score
+    };
+  }
+  if (score >= 151) {
+    return {
+      tier: 'Silver',
+      tierBn: 'সিলভার',
+      badgeEmoji: '🥈',
+      color: 'text-slate-200',
+      bgColor: 'bg-slate-300/10',
+      borderColor: 'border-slate-300/30',
+      score
+    };
+  }
+  return {
+    tier: 'Bronze',
+    tierBn: 'ব্রোঞ্জ',
+    badgeEmoji: '🥉',
+    color: 'text-orange-400',
+    bgColor: 'bg-orange-500/10',
+    borderColor: 'border-orange-500/30',
+    score
+  };
+}
+

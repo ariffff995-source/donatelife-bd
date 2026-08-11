@@ -10,14 +10,19 @@ export async function GET(req: NextRequest) {
     if (!admin) {
       return NextResponse.json({ error: 'Unauthorized access.' }, { status: 401 });
     }
-    const logs = await db
-      .select()
-      .from(dbActivityLogs)
-      .orderBy(desc(dbActivityLogs.timestamp));
+    try {
+      const logs = await db
+        .select()
+        .from(dbActivityLogs)
+        .orderBy(desc(dbActivityLogs.timestamp));
 
-    return NextResponse.json(logs);
+      return NextResponse.json(logs);
+    } catch (dbErr) {
+      console.warn('[Admin Logs] Database error, returning empty logs:', dbErr);
+      return NextResponse.json([]);
+    }
   } catch (error) {
     console.error('Admin logs error:', error);
-    return NextResponse.json({ error: 'Internal server error fetching activity logs.' }, { status: 500 });
+    return NextResponse.json([]);
   }
 }
