@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Users,
@@ -15,10 +15,13 @@ import {
   AlertCircle,
   Activity,
   CheckCircle2,
-  X
+  X,
+  Wifi,
+  WifiOff
 } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { api } from '../lib/api';
+import { supabase } from '../lib/supabase';
 import { PlatformStats, TelemetryData } from '../types';
 
 interface LiveImpactTelemetryProps {
@@ -27,10 +30,7 @@ interface LiveImpactTelemetryProps {
 }
 
 type GrowthPeriod = 'today' | 'thisWeek' | 'thisMonth';
-
-const CACHE_KEY = 'donatelife_telemetry_cache_v1';
-const CACHE_TTL_MS = 30000; // 30 seconds cache TTL
-const AUTO_REFRESH_SECONDS = 45; // Auto refresh every 45s
+type ConnectionState = 'Connected' | 'Reconnecting...' | 'Offline';
 
 // Smooth animated number component
 function AnimatedNumber({ value, language }: { value: number; language: 'bn' | 'en' }) {
@@ -49,14 +49,13 @@ function AnimatedNumber({ value, language }: { value: number; language: 'bn' | '
 
     let startTime: number | null = null;
     let animationFrameId: number;
-    const duration = 1000; // 1 second smooth animation
+    const duration = 800; // 0.8s smooth transition
 
     const animate = (timestamp: number) => {
       if (!startTime) startTime = timestamp;
       const elapsed = timestamp - startTime;
       const progress = Math.min(elapsed / duration, 1);
       
-      // easeOutCubic curve
       const ease = 1 - Math.pow(1 - progress, 3);
       const current = Math.round(startVal + (targetVal - startVal) * ease);
 
@@ -86,12 +85,11 @@ export default function LiveImpactTelemetry({ onNavigate, initialStats }: LiveIm
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [growthPeriod, setGrowthPeriod] = useState<GrowthPeriod>('thisWeek');
-  const [countdown, setCountdown] = useState<number>(AUTO_REFRESH_SECONDS);
   const [activeTooltip, setActiveTooltip] = useState<string | null>(null);
-  const [isCachedData, setIsCachedData] = useState<boolean>(false);
+  const [connectionState, setConnectionState] = useState<ConnectionState>('Connected');
 
-  // Load telemetry with caching and error handling
-  const fetchTelemetryData = async (isBackground = false) => {
+  // Load telemetry directly from database without fake delays or demo caches
+  const fetchTelemetryData = useCallback(async (isBackground = false) => {
     if (!isBackground && !telemetry) {
       setIsLoading(true);
     } else {
@@ -102,114 +100,96 @@ export default function LiveImpactTelemetry({ onNavigate, initialStats }: LiveIm
     try {
       const data = await api.telemetry();
       setTelemetry(data);
-      const now = new Date(data.lastUpdated || Date.now());
+      const now = data.lastUpdated ? new Date(data.lastUpdated) : new Date();
       setLastUpdated(now);
-      setIsCachedData(false);
-
-      // Save to cache
-      try {
-        localStorage.setItem(
-          CACHE_KEY,
-          JSON.stringify({
-            data,
-            timestamp: Date.now()
-          })
-        );
-      } catch (e) {
-        // LocalStorage quota or restricted error ignored
-      }
     } catch (err: any) {
-      console.warn('Telemetry API fetch failed, checking cache:', err);
-      // Fallback to cache if available
-      try {
-        const cached = localStorage.getItem(CACHE_KEY);
-        if (cached) {
-          const { data, timestamp } = JSON.parse(cached);
-          setTelemetry(data);
-          setLastUpdated(new Date(timestamp));
-          setIsCachedData(true);
-        } else if (initialStats) {
-          // Construct fallback telemetry structure from initialStats prop
-          setTelemetry({
-            totalDonors: initialStats.totalDonors,
-            activeRequests: initialStats.activeRequests,
-            totalHospitals: initialStats.totalHospitals,
-            successfulDonations: initialStats.successfulDonations,
-            growth: {
-              donors: { today: 1, thisWeek: 5, thisMonth: 18 },
-              activeRequests: { today: 1, thisWeek: 4, thisMonth: 12 },
-              hospitals: { today: 0, thisWeek: 1, thisMonth: 3 },
-              donations: { today: 1, thisWeek: 6, thisMonth: 24 }
-            },
-            lastUpdated: new Date().toISOString()
-          });
-          setLastUpdated(new Date());
-          setIsCachedData(true);
-        } else {
-          setError(
-            language === 'bn'
-              ? 'লাইভ ডেটা লোড করতে ব্যর্থ হয়েছে। পরে আবার চেষ্টা করুন।'
-              : 'Failed to sync live telemetry data. Please try refreshing.'
-          );
-        }
-      } catch (cacheErr) {
-        setError('Error reading cached statistics.');
+      console.warn('Telemetry API fetch failed:', err);
+      if (initialStats && !telemetry) {
+        setTelemetry({
+          totalDonors: initialStats.totalDonors,
+          activeRequests: initialStats.activeRequests,
+          totalHospitals: initialStats.totalHospitals,
+          successfulDonations: initialStats.successfulDonations,
+          growth: {
+            donors: { today: 0, thisWeek: 0, thisMonth: 0 },
+            activeRequests: { today: 0, thisWeek: 0, thisMonth: 0 },
+            hospitals: { today: 0, thisWeek: 0, thisMonth: 0 },
+            donations: { today: 0, thisWeek: 0, thisMonth: 0 }
+          },
+          lastUpdated: new Date().toISOString()
+        });
+        setLastUpdated(new Date());
+      } else if (!telemetry) {
+        setError(
+          language === 'bn'
+            ? 'লাইভ ডেটা সিঙ্ক করতে ব্যর্থ হয়েছে। পরে আবার চেষ্টা করুন।'
+            : 'Failed to sync live telemetry data. Please try refreshing.'
+        );
       }
     } finally {
       setIsLoading(false);
       setIsRefetching(false);
-      setCountdown(AUTO_REFRESH_SECONDS);
     }
-  };
+  }, [initialStats, language, telemetry]);
 
-  // Initial load with cache check
+  // Initial fetch on mount
   useEffect(() => {
-    let hasLoadedFromCache = false;
-    try {
-      const cached = localStorage.getItem(CACHE_KEY);
-      if (cached) {
-        const { data, timestamp } = JSON.parse(cached);
-        if (Date.now() - timestamp < CACHE_TTL_MS) {
-          setTelemetry(data);
-          setLastUpdated(new Date(timestamp));
-          setIsLoading(false);
-          setIsCachedData(true);
-          hasLoadedFromCache = true;
-        }
-      }
-    } catch (e) {
-      // Ignore cache parse errors
-    }
-
-    // Always fetch fresh data (quietly if cache exists)
-    fetchTelemetryData(hasLoadedFromCache);
+    fetchTelemetryData(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Auto-refresh timer loop
+  // Supabase Realtime Subscription for automatic updates on database INSERT/UPDATE/DELETE
   useEffect(() => {
-    const timer = setInterval(() => {
-      setCountdown((prev) => {
-        if (prev <= 1) {
-          fetchTelemetryData(true);
-          return AUTO_REFRESH_SECONDS;
+    if (!supabase) {
+      setConnectionState(navigator.onLine ? 'Connected' : 'Offline');
+      return;
+    }
+
+    const handleRealtimeChange = () => {
+      fetchTelemetryData(true);
+    };
+
+    const channel = supabase
+      .channel('live_impact_telemetry')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, handleRealtimeChange)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'requests' }, handleRealtimeChange)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'hospitals' }, handleRealtimeChange)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'donations' }, handleRealtimeChange)
+      .on('broadcast', { event: 'telemetry_update' }, handleRealtimeChange)
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          setConnectionState('Connected');
+        } else if (status === 'TIMED_OUT' || status === 'CLOSED' || status === 'CHANNEL_ERROR') {
+          setConnectionState('Reconnecting...');
         }
-        return prev - 1;
       });
-    }, 1000);
 
-    return () => clearInterval(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [telemetry]);
+    const handleOnline = () => {
+      setConnectionState('Reconnecting...');
+      fetchTelemetryData(true);
+    };
+    const handleOffline = () => {
+      setConnectionState('Offline');
+    };
 
-  // Format time relative or absolute
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      supabase.removeChannel(channel);
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, [fetchTelemetryData]);
+
+  // Format real-time timestamp
   const getFormattedTime = () => {
     if (!lastUpdated) return '';
     const now = new Date();
-    const diffSec = Math.floor((now.getTime() - lastUpdated.getTime()) / 1000);
+    const diffSec = Math.max(0, Math.floor((now.getTime() - lastUpdated.getTime()) / 1000));
 
     if (diffSec < 5) return language === 'bn' ? 'এইমাত্র' : 'Just now';
-    if (diffSec < 60) return language === 'bn' ? `${diffSec} সেকেন্ড আগে` : `${diffSec}s ago`;
+    if (diffSec < 60) return language === 'bn' ? `${diffSec} সেক আগে` : `${diffSec}s ago`;
 
     return lastUpdated.toLocaleTimeString(language === 'bn' ? 'bn-BD' : 'en-US', {
       hour: '2-digit',
@@ -230,7 +210,7 @@ export default function LiveImpactTelemetry({ onNavigate, initialStats }: LiveIm
       targetTab: 'search',
       targetLabelEn: 'Donor Directory',
       targetLabelBn: 'রক্তদাতা তালিকা',
-      growth: telemetry?.growth.donors,
+      growth: telemetry?.growth?.donors,
       tooltipEn: 'Total verified & volunteer blood donors registered across 64 districts in Bangladesh ready for urgent dispatch.',
       tooltipBn: 'বাংলাদেশজুড়ে ৬৪ টি জেলায় নিবন্ধিত সমস্ত সামাজিক ও স্বেচ্ছাসেবক রক্তদাতাদের তথ্য।'
     },
@@ -245,7 +225,7 @@ export default function LiveImpactTelemetry({ onNavigate, initialStats }: LiveIm
       targetTab: 'requests',
       targetLabelEn: 'Emergency Requests',
       targetLabelBn: 'জরুরী রিকুয়েস্টসমূহ',
-      growth: telemetry?.growth.activeRequests,
+      growth: telemetry?.growth?.activeRequests,
       tooltipEn: 'Real-time ongoing emergency blood request campaigns currently seeking immediate donor matches.',
       tooltipBn: 'জরুরী রক্তের চাহিদার লাইভ ক্যাম্পেইনসমূহ যা এই মুহূর্তে সরাসরি রক্তদাতা খুঁজছে।'
     },
@@ -260,7 +240,7 @@ export default function LiveImpactTelemetry({ onNavigate, initialStats }: LiveIm
       targetTab: 'directories',
       targetLabelEn: 'Hospital Directory',
       targetLabelBn: 'হাসপাতাল ডিরেক্টরি',
-      growth: telemetry?.growth.hospitals,
+      growth: telemetry?.growth?.hospitals,
       tooltipEn: 'Verified medical centers, clinics, and specialized hospitals equipped with blood transfusion facilities.',
       tooltipBn: 'রক্ত সঞ্চালন ও ল্যাব স্যাম্পল সুবিধা সংবলিত রেজিস্টার্ড হাসপাতাল ও ক্লিনিক।'
     },
@@ -275,28 +255,57 @@ export default function LiveImpactTelemetry({ onNavigate, initialStats }: LiveIm
       targetTab: 'dashboard',
       targetLabelEn: 'Donation History',
       targetLabelBn: 'রক্তদানের ইতিহাস',
-      growth: telemetry?.growth.donations,
+      growth: telemetry?.growth?.donations,
       tooltipEn: 'Completed blood donations successfully delivered and lives directly saved through our platform.',
       tooltipBn: 'আমাদের প্ল্যাটফর্মের মাধ্যমে সফলভাবে সম্পন্ন হওয়া রিয়াল-টাইম রক্তদান।'
     }
   ];
 
   return (
-    <section className="space-y-6 sm:space-y-8 text-left">
-      {/* Header with Title and Dashboard Controls */}
+    <section className="space-y-6 sm:space-y-8 text-left" id="live-telemetry-container">
+      {/* Header with Title, Status Indicator, and Dashboard Controls */}
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 pb-2 border-b border-slate-800/60">
         <div>
           <div className="flex items-center gap-2">
-            <span className="relative flex h-2.5 w-2.5">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
-            </span>
+            {/* Real-time Connection Status Pill */}
+            <div
+              className={`flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border text-[10px] font-extrabold uppercase tracking-wider ${
+                connectionState === 'Connected'
+                  ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
+                  : connectionState === 'Reconnecting...'
+                  ? 'bg-amber-500/10 border-amber-500/20 text-amber-400'
+                  : 'bg-rose-500/10 border-rose-500/20 text-rose-400'
+              }`}
+            >
+              <span className="relative flex h-2 w-2">
+                <span
+                  className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${
+                    connectionState === 'Connected'
+                      ? 'bg-emerald-400'
+                      : connectionState === 'Reconnecting...'
+                      ? 'bg-amber-400'
+                      : 'bg-rose-400'
+                  }`}
+                />
+                <span
+                  className={`relative inline-flex rounded-full h-2 w-2 ${
+                    connectionState === 'Connected'
+                      ? 'bg-emerald-500'
+                      : connectionState === 'Reconnecting...'
+                      ? 'bg-amber-500'
+                      : 'bg-rose-500'
+                  }`}
+                />
+              </span>
+              <span>{connectionState}</span>
+            </div>
+
             <h3 className="text-[10px] sm:text-xs font-bold uppercase tracking-widest text-rose-400">
-              {language === 'bn' ? 'লাইভ অ্যানালিটিক্স ড্যাশবোর্ড' : 'Live Real-Time Telemetry'}
+              {language === 'bn' ? 'লাইভ টেলিম্যাট্রি' : 'Supabase Realtime'}
             </h3>
           </div>
           <h2 className="text-xl sm:text-3xl font-black text-slate-100 tracking-tight mt-1 flex items-center gap-2">
-            {language === 'bn' ? 'প্ল্যাটফর্মের প্রভাব ও পরিসংখ্যান' : 'Live Impact Telemetry'}
+            {language === 'bn' ? 'প্ল্যাটফর্মের প্রভাব ও লাইভ পরিসংখ্যান' : 'Live Impact Telemetry'}
           </h2>
         </div>
 
@@ -339,7 +348,7 @@ export default function LiveImpactTelemetry({ onNavigate, initialStats }: LiveIm
             </button>
           </div>
 
-          {/* Sync / Refresh Button with Countdown */}
+          {/* Sync / Refresh Button with Timestamp */}
           <div className="flex items-center gap-2 bg-slate-900/90 border border-slate-800 px-3 py-1.5 rounded-xl text-xs font-medium text-slate-300">
             <button
               type="button"
@@ -347,6 +356,7 @@ export default function LiveImpactTelemetry({ onNavigate, initialStats }: LiveIm
               disabled={isRefetching}
               title={language === 'bn' ? 'এখনই আপডেট করুন' : 'Refresh Telemetry'}
               className="p-1 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-rose-400 transition cursor-pointer flex items-center gap-1.5 focus:outline-none"
+              id="telemetry-sync-btn"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${isRefetching ? 'animate-spin text-rose-500' : ''}`} />
               <span className="text-[10px] uppercase tracking-wider font-bold text-slate-400 hover:text-slate-200">
@@ -358,16 +368,15 @@ export default function LiveImpactTelemetry({ onNavigate, initialStats }: LiveIm
 
             <div className="flex items-center gap-1 text-[10px] text-slate-400">
               <Clock className="w-3 h-3 text-slate-500" />
-              <span>{getFormattedTime()}</span>
-              <span className="text-slate-600 font-mono">({countdown}s)</span>
+              <span className="font-mono">{getFormattedTime()}</span>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Error or Cached Warning Banner */}
+      {/* Error Alert Banner */}
       <AnimatePresence>
-        {error ? (
+        {error && (
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -386,22 +395,7 @@ export default function LiveImpactTelemetry({ onNavigate, initialStats }: LiveIm
               {language === 'bn' ? 'পুনরায় চেষ্টা করুন' : 'Retry'}
             </button>
           </motion.div>
-        ) : isCachedData ? (
-          <motion.div
-            initial={{ opacity: 0, y: -5 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="px-3 py-1.5 bg-amber-500/5 border border-amber-500/15 rounded-xl flex items-center justify-between text-[11px] text-amber-300/90"
-          >
-            <div className="flex items-center gap-1.5">
-              <Activity className="w-3.5 h-3.5 text-amber-400 shrink-0 animate-pulse" />
-              <span>
-                {language === 'bn'
-                  ? 'ক্যাশেড টেলিম্যাট্রি তথ্য প্রদর্শিত হচ্ছে। সিঙ্ক রানিং...'
-                  : 'Displaying cached live statistics. Auto-reconnecting...'}
-              </span>
-            </div>
-          </motion.div>
-        ) : null}
+        )}
       </AnimatePresence>
 
       {/* Grid Display */}

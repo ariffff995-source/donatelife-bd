@@ -290,6 +290,15 @@ export const featureSettings = pgTable('feature_settings', {
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
 
+// 14b. Feature Flags Table (Drizzle schema)
+export const featureFlags = pgTable('feature_flags', {
+  id: text('id').primaryKey(),
+  featureKey: text('feature_key').notNull().unique(),
+  status: text('status').notNull().default('public'), // 'public' | 'hidden' | 'maintenance'
+  updatedBy: text('updated_by'),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
 // 15. Persistent OTP Verification Table
 export const otps = pgTable(
   'otps',

@@ -9,8 +9,8 @@ export async function POST(req: NextRequest) {
     if (!admin) {
       return NextResponse.json({ success: false, error: 'Unauthorized admin access.' }, { status: 401 });
     }
-    if (admin.role !== 'super-admin') {
-      return NextResponse.json({ success: false, error: 'Super Admin authority required for manual database seeding.' }, { status: 403 });
+    if (admin.role !== 'admin') {
+      return NextResponse.json({ success: false, error: 'Admin authority required for manual database seeding.' }, { status: 403 });
     }
 
     await manualSeedDatabase();

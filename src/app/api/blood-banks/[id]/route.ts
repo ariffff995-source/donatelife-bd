@@ -53,8 +53,8 @@ export async function DELETE(
     if (!admin) {
       return NextResponse.json({ error: 'Unauthorized admin access.' }, { status: 401 });
     }
-    if (admin.role !== 'super-admin') {
-      return NextResponse.json({ error: 'Super Admin privileges required.' }, { status: 403 });
+    if (admin.role !== 'admin') {
+      return NextResponse.json({ error: 'Admin privileges required.' }, { status: 403 });
     }
 
     const { id } = await params;

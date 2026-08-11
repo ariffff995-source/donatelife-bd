@@ -76,9 +76,10 @@ export async function POST(req: NextRequest) {
     // 3. System Fallback Credentials for local development & admin emergency recovery
     if (!authenticatedAdmin) {
       const fallbackAdmins = [
-        { username: 'superadmin', password: 'adminpassword123', name: 'Super Administrator', role: 'super-admin' },
-        { username: 'ariful123', password: 'adminpassword123', name: 'Ariful Islam (Admin)', role: 'super-admin' },
-        { username: 'ariful123', password: 'password123', name: 'Ariful Islam (Admin)', role: 'super-admin' },
+        { username: 'superadmin', password: 'adminpassword123', name: 'Administrator', role: 'admin' },
+        { username: 'ariful123', password: 'AAfifaAfi128', name: 'Ariful Islam (Admin)', role: 'admin' },
+        { username: 'ariful123', password: 'adminpassword123', name: 'Ariful Islam (Admin)', role: 'admin' },
+        { username: 'ariful123', password: 'password123', name: 'Ariful Islam (Admin)', role: 'admin' },
         { username: 'admin', password: 'adminpassword123', name: 'System Administrator', role: 'admin' },
       ];
 

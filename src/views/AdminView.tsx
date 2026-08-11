@@ -27,7 +27,7 @@ interface AdminSession {
   id: string;
   username: string;
   name: string;
-  role: 'super-admin' | 'admin' | 'moderator' | string;
+  role: 'admin' | string;
   createdAt: string;
 }
 
@@ -35,7 +35,7 @@ interface AdminActivityLog {
   id: string;
   timestamp: string;
   adminUsername: string;
-  adminRole: 'super-admin' | 'moderator';
+  adminRole: 'admin';
   action: string;
   details: string;
 }
@@ -51,6 +51,7 @@ export default function AdminView({ currentUser, allRequests, onRefreshRequests 
   const [loginLoading, setLoginLoading] = useState(false);
 
   const { refreshFeatureFlags } = useAppContext();
+  const isAdmin = session?.role === 'admin' || Boolean(session);
 
   // Panel state
   const [activeTab, setActiveTab] = useState<'analytics' | 'donors' | 'requests' | 'verifications' | 'donor-verification' | 'hospitals' | 'blogs' | 'notifications' | 'logs' | 'cms' | 'ambulances' | 'features'>('analytics');
@@ -209,8 +210,8 @@ export default function AdminView({ currentUser, allRequests, onRefreshRequests 
   };
 
   const handleUpdateFeatureStatus = async (featureKey: string, status: FeatureStatus) => {
-    if (!isSuperAdmin) {
-      setError('Super Admin privileges are required to modify feature visibility settings.');
+    if (!isAdmin) {
+      setError('Admin privileges are required to modify feature visibility settings.');
       return;
     }
     setUpdatingFeatureKey(featureKey);
@@ -284,7 +285,7 @@ export default function AdminView({ currentUser, allRequests, onRefreshRequests 
   // Toggle Donor admin privilege
   const handleToggleAdminStatus = async (userId: string, currentVal: boolean) => {
     if (!isSuperAdmin) {
-      setError('Super Admin privileges are required to change authorization privileges.');
+      setError('Admin privileges are required to change authorization privileges.');
       return;
     }
     setError(null);
@@ -377,10 +378,10 @@ export default function AdminView({ currentUser, allRequests, onRefreshRequests 
     }
   };
 
-  // Delete Donor (Super Admin only)
+  // Delete Donor (Admin only)
   const handleDeleteDonor = async (userId: string) => {
     if (!isSuperAdmin) {
-      setError('Super Admin authority required to expunge database records.');
+      setError('Admin authority required to expunge database records.');
       return;
     }
     if (!window.confirm('CRITICAL AUDIT NOTICE: Are you absolutely certain you want to permanently delete this donor? All data will be expunged.')) return;
@@ -395,10 +396,10 @@ export default function AdminView({ currentUser, allRequests, onRefreshRequests 
     }
   };
 
-  // Delete Blood Campaign (Super Admin only)
+  // Delete Blood Campaign (Admin only)
   const handleDeleteRequest = async (id: string) => {
     if (!isSuperAdmin) {
-      setError('Super Admin authority required to delete requests.');
+      setError('Admin authority required to delete requests.');
       return;
     }
     if (!window.confirm('Are you sure you want to delete this blood request campaign?')) return;
@@ -490,10 +491,10 @@ export default function AdminView({ currentUser, allRequests, onRefreshRequests 
     }
   };
 
-  // Delete Hospital (Super Admin only)
+  // Delete Hospital (Admin only)
   const handleDeleteHospital = async (id: string) => {
     if (!isSuperAdmin) {
-      setError('Super Admin authority required to delete directory listings.');
+      setError('Admin authority required to delete directory listings.');
       return;
     }
     if (!window.confirm('Delete hospital entry from database?')) return;
@@ -559,10 +560,10 @@ export default function AdminView({ currentUser, allRequests, onRefreshRequests 
     }
   };
 
-  // Delete Ambulance (Super Admin only)
+  // Delete Ambulance (Admin only)
   const handleDeleteAmbulance = async (id: string) => {
     if (!isSuperAdmin) {
-      setError('Super Admin authority required to delete directory listings.');
+      setError('Admin authority required to delete directory listings.');
       return;
     }
     if (!window.confirm('Delete ambulance entry from database?')) return;
@@ -663,7 +664,7 @@ export default function AdminView({ currentUser, allRequests, onRefreshRequests 
   const handleBulkDelete = async () => {
     if (selectedAmbulanceIds.length === 0) return;
     if (!isSuperAdmin) {
-      setError('Super Admin authority required to delete database listings.');
+      setError('Admin authority required to delete database listings.');
       return;
     }
     if (!window.confirm(`Are you sure you want to permanently delete ${selectedAmbulanceIds.length} selected ambulance(s)?`)) return;
@@ -2781,7 +2782,7 @@ export default function AdminView({ currentUser, allRequests, onRefreshRequests 
                             {(['Public', 'Hidden', 'Maintenance'] as FeatureStatus[]).map((st) => (
                               <button
                                 key={st}
-                                disabled={isUpdating || !isSuperAdmin}
+                                disabled={isUpdating || !isAdmin}
                                 onClick={() => handleUpdateFeatureStatus(mod.key, st)}
                                 className={`py-2 px-1 text-[10px] font-black uppercase tracking-wider rounded-lg transition-all cursor-pointer text-center ${
                                   currentStatus === st
@@ -2850,7 +2851,7 @@ export default function AdminView({ currentUser, allRequests, onRefreshRequests 
                             {(['Public', 'Hidden', 'Maintenance'] as FeatureStatus[]).map((st) => (
                               <button
                                 key={st}
-                                disabled={isUpdating || !isSuperAdmin}
+                                disabled={isUpdating || !isAdmin}
                                 onClick={() => handleUpdateFeatureStatus(setting.featureKey, st)}
                                 className={`py-1.5 text-[9px] font-black uppercase tracking-wider rounded transition-all cursor-pointer text-center ${
                                   currentStatus === st

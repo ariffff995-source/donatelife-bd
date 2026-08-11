@@ -8,8 +8,9 @@ import {
   ambulances as dbAmbulances,
   blogs as dbBlogs
 } from '@/src/db/schema';
-import { eq, or, ilike, and } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import { ensureDbSeeded } from '@/src/lib/server-backend';
+import { getAllFeatureSettings } from '@/src/lib/feature-flags';
 import { GlobalSearchResultItem, GlobalSearchResults } from '@/src/types';
 
 export const dynamic = 'force-dynamic';
@@ -36,7 +37,13 @@ export async function GET(req: NextRequest) {
   try {
     await ensureDbSeeded();
 
-    // 1. Search Donors
+    const featureSettings = await getAllFeatureSettings();
+    const isPublic = (key: string) => {
+      const setting = featureSettings.find((f) => f.featureKey === key);
+      return setting ? setting.status === 'Public' : true;
+    };
+
+    // 1. Search Donors (Always active module)
     const allUsers = await db.select().from(dbUsers).where(eq(dbUsers.isAdmin, false));
     const matchedDonors = allUsers.filter((u) => {
       const nameMatch = u.name.toLowerCase().includes(q);
@@ -56,7 +63,7 @@ export async function GET(req: NextRequest) {
       details: u.phone
     }));
 
-    // 2. Search Blood Requests
+    // 2. Search Blood Requests (Always active module)
     const allRequests = await db.select().from(dbRequests);
     const matchedRequests = allRequests.filter((r) => {
       const patientMatch = r.patientName.toLowerCase().includes(q);
@@ -75,67 +82,79 @@ export async function GET(req: NextRequest) {
       details: r.reason
     }));
 
-    // 3. Search Hospitals
-    const allHospitals = await db.select().from(dbHospitals);
-    const matchedHospitals = allHospitals.filter((h) => {
-      const nameMatch = h.name.toLowerCase().includes(q);
-      const distMatch = h.district.toLowerCase().includes(q);
-      const addrMatch = h.address.toLowerCase().includes(q);
-      return nameMatch || distMatch || addrMatch;
-    }).slice(0, 5);
+    // 3. Search Hospitals (Only if status === 'Public')
+    let hospitalsResults: GlobalSearchResultItem[] = [];
+    if (isPublic('hospitals')) {
+      const allHospitals = await db.select().from(dbHospitals);
+      const matchedHospitals = allHospitals.filter((h) => {
+        const nameMatch = h.name.toLowerCase().includes(q);
+        const distMatch = h.district.toLowerCase().includes(q);
+        const addrMatch = h.address.toLowerCase().includes(q);
+        return nameMatch || distMatch || addrMatch;
+      }).slice(0, 5);
 
-    const hospitalsResults: GlobalSearchResultItem[] = matchedHospitals.map((h) => ({
-      id: h.id,
-      type: 'hospital',
-      title: h.name,
-      subtitle: `${h.type.toUpperCase()} • ${h.district}`,
-      badge: h.isVerified ? 'VERIFIED' : undefined,
-      details: h.address
-    }));
+      hospitalsResults = matchedHospitals.map((h) => ({
+        id: h.id,
+        type: 'hospital',
+        title: h.name,
+        subtitle: `${h.type.toUpperCase()} • ${h.district}`,
+        badge: h.isVerified ? 'VERIFIED' : undefined,
+        details: h.address
+      }));
+    }
 
-    // 4. Search Blood Banks
-    const allBloodBanks = await db.select().from(dbBloodBanks);
-    const matchedBanks = allBloodBanks.filter((b) => {
-      return b.name.toLowerCase().includes(q) || b.district.toLowerCase().includes(q);
-    }).slice(0, 5);
+    // 4. Search Blood Banks (Only if status === 'Public')
+    let bloodBanksResults: GlobalSearchResultItem[] = [];
+    if (isPublic('blood-banks')) {
+      const allBloodBanks = await db.select().from(dbBloodBanks);
+      const matchedBanks = allBloodBanks.filter((b) => {
+        return b.name.toLowerCase().includes(q) || b.district.toLowerCase().includes(q);
+      }).slice(0, 5);
 
-    const bloodBanksResults: GlobalSearchResultItem[] = matchedBanks.map((b) => ({
-      id: b.id,
-      type: 'blood_bank',
-      title: b.name,
-      subtitle: `${b.district} • Contact: ${b.contactPhone}`,
-      details: b.address
-    }));
+      bloodBanksResults = matchedBanks.map((b) => ({
+        id: b.id,
+        type: 'blood_bank',
+        title: b.name,
+        subtitle: `${b.district} • Contact: ${b.contactPhone}`,
+        details: b.address
+      }));
+    }
 
-    // 5. Search Ambulances
-    const allAmbulances = await db.select().from(dbAmbulances);
-    const matchedAmbulances = allAmbulances.filter((a) => {
-      return a.name.toLowerCase().includes(q) || a.district.toLowerCase().includes(q) || (a.driverName && a.driverName.toLowerCase().includes(q));
-    }).slice(0, 5);
+    // 5. Search Ambulances (Only if status === 'Public')
+    let ambulancesResults: GlobalSearchResultItem[] = [];
+    if (isPublic('ambulances')) {
+      const allAmbulances = await db.select().from(dbAmbulances);
+      const matchedAmbulances = allAmbulances.filter((a) => {
+        return a.name.toLowerCase().includes(q) || a.district.toLowerCase().includes(q) || (a.driverName && a.driverName.toLowerCase().includes(q));
+      }).slice(0, 5);
 
-    const ambulancesResults: GlobalSearchResultItem[] = matchedAmbulances.map((a) => ({
-      id: a.id,
-      type: 'ambulance',
-      title: a.name,
-      subtitle: `${a.district} • ETA: ${a.averageResponseTime || '15 min'}`,
-      badge: a.liveStatus || 'Available',
-      details: a.contactPhone
-    }));
+      ambulancesResults = matchedAmbulances.map((a) => ({
+        id: a.id,
+        type: 'ambulance',
+        title: a.name,
+        subtitle: `${a.district} • ETA: ${a.averageResponseTime || '15 min'}`,
+        badge: a.liveStatus || 'Available',
+        details: a.contactPhone
+      }));
+    }
 
-    // 6. Search Blog Articles
-    const allBlogs = await db.select().from(dbBlogs);
-    const matchedBlogs = allBlogs.filter((b: any) => {
-      const enTitle = b.en?.seoTitle || b.slug;
-      return enTitle.toLowerCase().includes(q) || b.category.toLowerCase().includes(q);
-    }).slice(0, 3);
+    // 6. Search Blog Articles (Only if status === 'Public')
+    let blogsResults: GlobalSearchResultItem[] = [];
+    if (isPublic('blog')) {
+      const allBlogs = await db.select().from(dbBlogs);
+      const matchedBlogs = allBlogs.filter((b: any) => {
+        const enTitle = b.en?.seoTitle || b.slug;
+        return enTitle.toLowerCase().includes(q) || b.category.toLowerCase().includes(q);
+      }).slice(0, 3);
 
-    const blogsResults: GlobalSearchResultItem[] = matchedBlogs.map((b: any) => ({
-      id: b.id,
-      type: 'blog',
-      title: b.en?.seoTitle || b.slug,
-      subtitle: `Category: ${b.category}`,
-      url: `/blog/${b.slug}`
-    }));
+      blogsResults = matchedBlogs.map((b: any) => ({
+        id: b.id,
+        type: 'blog',
+        title: b.en?.seoTitle || b.slug,
+        subtitle: `Category: ${b.category}`,
+        url: `/blog/${b.slug}`
+      }));
+    }
 
     const results: GlobalSearchResults = {
       donors: donorsResults,

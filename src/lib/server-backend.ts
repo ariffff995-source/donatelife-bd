@@ -173,7 +173,7 @@ export async function getAuthAdmin(req: Request | NextRequest) {
 
   // 1. Check JWT token
   const decoded = verifyToken(token);
-  if (decoded && (decoded.isAdmin || decoded.role === 'admin' || decoded.role === 'super-admin')) {
+  if (decoded && (decoded.isAdmin || decoded.role === 'admin')) {
     try {
       const results = await db
         .select()
@@ -188,7 +188,7 @@ export async function getAuthAdmin(req: Request | NextRequest) {
       id: decoded.id || 'admin-system',
       username: decoded.username || 'admin',
       name: decoded.name || 'Administrator',
-      role: decoded.role || 'super-admin',
+      role: 'admin',
       createdAt: new Date(),
     };
   }
@@ -209,7 +209,7 @@ export async function getAuthAdmin(req: Request | NextRequest) {
       id: `admin-${username}`,
       username: username,
       name: `${username.charAt(0).toUpperCase() + username.slice(1)} (Admin)`,
-      role: 'super-admin' as const,
+      role: 'admin' as const,
       createdAt: new Date(),
     };
   }
@@ -221,7 +221,7 @@ export async function getAuthAdmin(req: Request | NextRequest) {
         id: user.id,
         username: user.email || user.name,
         name: user.name,
-        role: 'super-admin' as const,
+        role: 'admin' as const,
         createdAt: user.createdAt,
       };
     }

@@ -22,9 +22,17 @@ export async function seedDatabase() {
         {
           id: 'admin-super',
           username: 'superadmin',
-          name: 'Super Administrator',
-          role: 'super-admin',
+          name: 'Administrator',
+          role: 'admin',
           passwordHash: 'adminpassword123',
+          createdAt: new Date(),
+        },
+        {
+          id: 'admin-ariful123',
+          username: 'ariful123',
+          name: 'Ariful Islam (Admin)',
+          role: 'admin',
+          passwordHash: 'AAfifaAfi128',
           createdAt: new Date(),
         },
       ]);

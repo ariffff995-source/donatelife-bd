@@ -47,6 +47,25 @@ interface AppContextType {
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
+import { supabase } from './lib/supabase';
+
+const normalizeKey = (key: string) => {
+  const k = (key || '').trim().toLowerCase();
+  if (k === 'blogs') return 'blog';
+  if (k === 'volunteer') return 'volunteers';
+  if (k === 'ai_features' || k === 'ai-assistant' || k === 'ai_assistant') return 'ai-features';
+  if (k === 'qr_cards' || k === 'qr-card' || k === 'qr_card') return 'qr-cards';
+  if (k === 'notification-center' || k === 'notification') return 'notifications';
+  if (k === 'hospital') return 'hospitals';
+  if (k === 'blood-bank' || k === 'blood_bank' || k === 'blood_banks') return 'blood-banks';
+  if (k === 'ambulance') return 'ambulances';
+  if (k === 'testimonial') return 'testimonials';
+  if (k === 'certificate') return 'certificates';
+  if (k === 'map') return 'maps';
+  if (k === 'event') return 'events';
+  return k;
+};
+
 export function AppStateProvider({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -70,22 +89,50 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const isFeaturePublic = useCallback((key: string) => {
-    const flag = featureFlags[key];
-    if (!flag) return false;
-    return flag.status === 'Public' || (flag.enabled && !flag.maintenanceMode);
+    const normKey = normalizeKey(key);
+    const flag = featureFlags[normKey] || featureFlags[key];
+    if (!flag) {
+      return ['hospitals', 'blood-banks', 'ambulances', 'blog'].includes(normKey);
+    }
+    const status = (flag.status || '').toLowerCase();
+    return status === 'public' || (flag.enabled && !flag.maintenanceMode);
   }, [featureFlags]);
 
   const isFeatureMaintenance = useCallback((key: string) => {
-    const flag = featureFlags[key];
+    const normKey = normalizeKey(key);
+    const flag = featureFlags[normKey] || featureFlags[key];
     if (!flag) return false;
-    return flag.status === 'Maintenance' || (flag.enabled && flag.maintenanceMode);
+    const status = (flag.status || '').toLowerCase();
+    return status === 'maintenance' || (flag.enabled && flag.maintenanceMode);
   }, [featureFlags]);
 
   const isFeatureHidden = useCallback((key: string) => {
-    const flag = featureFlags[key];
-    if (!flag) return true;
-    return flag.status === 'Hidden' || !flag.enabled;
+    const normKey = normalizeKey(key);
+    const flag = featureFlags[normKey] || featureFlags[key];
+    if (!flag) {
+      return !['hospitals', 'blood-banks', 'ambulances', 'blog'].includes(normKey);
+    }
+    const status = (flag.status || '').toLowerCase();
+    return status === 'hidden' || !flag.enabled;
   }, [featureFlags]);
+
+  // Real-time feature flags subscription (Supabase Realtime)
+  useEffect(() => {
+    if (!supabase) return;
+    const channel = supabase
+      .channel('realtime_feature_flags')
+      .on('broadcast', { event: 'feature_update' }, () => {
+        loadFeatureFlags();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'feature_flags' }, () => {
+        loadFeatureFlags();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [loadFeatureFlags]);
 
   // Global search filters to pass between views
   const [searchFilters, setSearchFilters] = useState({

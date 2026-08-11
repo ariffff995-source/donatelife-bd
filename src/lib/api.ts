@@ -562,13 +562,13 @@ export const api = {
   // Feature Settings Operations
   featureSettings: {
     getPublic(): Promise<{ success: boolean; data: FeatureSetting[]; map: Record<string, { enabled: boolean; maintenanceMode: boolean; status: FeatureStatus }> }> {
-      return request('/settings/features');
+      return request('/features');
     },
     getAdmin(): Promise<{ success: boolean; data: FeatureSetting[] }> {
-      return request('/admin/settings/features');
+      return request('/admin/features');
     },
     updateAdmin(payload: { featureKey: string; status?: FeatureStatus; enabled?: boolean; maintenanceMode?: boolean }): Promise<{ success: boolean; data: FeatureSetting; message: string }> {
-      return request('/admin/settings/features', { method: 'PATCH', body: JSON.stringify(payload) });
+      return request('/admin/features', { method: 'PATCH', body: JSON.stringify(payload) });
     }
   }
 };

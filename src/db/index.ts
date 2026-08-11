@@ -16,6 +16,8 @@ export function getDb() {
     sqlClient = postgres('postgresql://postgres:postgres@localhost:5432/postgres', {
       prepare: false,
       max: 1,
+      connect_timeout: 3,
+      idle_timeout: 5,
     });
     dbInstance = drizzle(sqlClient, { schema });
     return dbInstance;
@@ -25,6 +27,8 @@ export function getDb() {
   sqlClient = postgres(connectionString, {
     prepare: false, // Disables prepared statements for PgBouncer / Transaction pooler compatibility
     ssl: 'require',  // Enforces SSL for Supabase cloud database connection
+    connect_timeout: 3,
+    idle_timeout: 10,
   });
   dbInstance = drizzle(sqlClient, { schema });
   return dbInstance;
