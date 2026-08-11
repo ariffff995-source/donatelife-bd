@@ -75,10 +75,9 @@ interface PaginationState {
 
 export default function PublicDonorDirectoryView({ currentUser }: PublicDonorDirectoryViewProps) {
   const { language } = useLanguage();
-  const showToast = (msg: string, type: 'success' | 'error' = 'success') => {
-    if (type === 'error') console.error(msg);
-    else console.log(msg);
-  };
+  const showToast = useCallback((msg: string, type: 'success' | 'error' = 'success') => {
+    setToast({ message: msg, type });
+  }, []);
 
   // Search Query & Map View State
   const [searchQuery, setSearchQuery] = useState('');

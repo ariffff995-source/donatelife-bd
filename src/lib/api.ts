@@ -79,7 +79,7 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
                             endpoint.startsWith('/blood-banks') ||
                             (endpoint.startsWith('/blogs') && options.method && options.method !== 'GET');
                             
-  const token = isManagementRoute ? getAdminToken() : getAuthToken();
+  const token = isManagementRoute ? (getAdminToken() || getAuthToken()) : getAuthToken();
   const headers = new Headers(options.headers || {});
   
   if (token) {

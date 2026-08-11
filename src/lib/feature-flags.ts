@@ -47,7 +47,7 @@ export async function ensureFeatureSettingsSeeded() {
     const toInsert = INITIAL_MODULES.filter((m) => !existingKeys.has(m.featureKey)).map((m) => ({
       id: `feat-${m.featureKey}`,
       featureKey: m.featureKey,
-      enabled: false, // Default is false as required by specification
+      enabled: m.category === 'active', // Active directory modules default to Public (true)
       maintenanceMode: false,
       updatedBy: 'system',
       updatedAt: new Date(),

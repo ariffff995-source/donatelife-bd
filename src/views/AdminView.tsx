@@ -27,7 +27,7 @@ interface AdminSession {
   id: string;
   username: string;
   name: string;
-  role: 'super-admin' | 'moderator';
+  role: 'super-admin' | 'admin' | 'moderator' | string;
   createdAt: string;
 }
 
@@ -188,7 +188,7 @@ export default function AdminView({ currentUser, allRequests, onRefreshRequests 
         setAmbulances(ambList || []);
       } else if (activeTab === 'features') {
         const featRes = await api.featureSettings.getAdmin();
-        setFeatureSettings(featRes?.data || []);
+        setFeatureSettings(Array.isArray(featRes) ? featRes : (featRes?.data || []));
       } else if (activeTab === 'notifications') {
         setLoadingLogs(true);
         try {
@@ -209,7 +209,7 @@ export default function AdminView({ currentUser, allRequests, onRefreshRequests 
   };
 
   const handleUpdateFeatureStatus = async (featureKey: string, status: FeatureStatus) => {
-    if (session?.role !== 'super-admin') {
+    if (!isSuperAdmin) {
       setError('Super Admin privileges are required to modify feature visibility settings.');
       return;
     }
@@ -218,8 +218,13 @@ export default function AdminView({ currentUser, allRequests, onRefreshRequests 
     setSuccess(null);
     try {
       const res = await api.featureSettings.updateAdmin({ featureKey, status });
-      const updated = res.data;
-      setFeatureSettings(prev => prev.map(f => f.featureKey === featureKey ? updated : f));
+      const updated = res?.data;
+      if (updated) {
+        setFeatureSettings(prev => prev.map(f => f.featureKey === featureKey ? updated : f));
+      } else {
+        const featRes = await api.featureSettings.getAdmin();
+        setFeatureSettings(Array.isArray(featRes) ? featRes : (featRes?.data || []));
+      }
       await refreshFeatureFlags();
       setSuccess(`Feature '${featureKey}' status updated to ${status}.`);
     } catch (err: any) {
@@ -273,8 +278,8 @@ export default function AdminView({ currentUser, allRequests, onRefreshRequests 
     setError(null);
   };
 
-  // RBAC permissions helper
-  const isSuperAdmin = session?.role === 'super-admin';
+  // RBAC permissions helper (Single unified Admin role)
+  const isSuperAdmin = Boolean(session || currentUser?.isAdmin);
 
   // Toggle Donor admin privilege
   const handleToggleAdminStatus = async (userId: string, currentVal: boolean) => {
@@ -1025,7 +1030,7 @@ export default function AdminView({ currentUser, allRequests, onRefreshRequests 
                   type="text" 
                   value={loginCreds.username}
                   onChange={(e) => setLoginCreds({ ...loginCreds, username: e.target.value })}
-                  placeholder="superadmin / moderator"
+                  placeholder="superadmin / admin"
                   className="w-full pl-10 pr-4 py-3 bg-slate-950 border border-slate-800 rounded-xl text-sm text-slate-100 placeholder:text-slate-600 focus:outline-none focus:ring-1 focus:ring-rose-500"
                   required
                 />
@@ -1107,10 +1112,8 @@ export default function AdminView({ currentUser, allRequests, onRefreshRequests 
           <div>
             <div className="flex items-center gap-2">
               <h1 className="text-xl font-extrabold text-slate-100">DonateLife BD Admin Panel</h1>
-              <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
-                isSuperAdmin ? 'bg-rose-500/10 text-rose-400 border border-rose-500/20' : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-              }`}>
-                {session.role === 'super-admin' ? 'Super Admin' : 'Moderator'}
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-rose-500/10 text-rose-400 border border-rose-500/20">
+                Administrator
               </span>
             </div>
             <p className="text-xs text-slate-400 mt-1">Authorized Session: <strong className="text-slate-200">{session.name}</strong> • Logs enabled</p>
@@ -1187,15 +1190,15 @@ export default function AdminView({ currentUser, allRequests, onRefreshRequests 
 
       {/* Main Tab Stage content */}
       <div className="min-h-[50vh] relative">
-        <AnimatePresence mode="wait">
-          {loading && (
-            <div className="absolute inset-0 bg-slate-950/40 backdrop-blur-xs flex items-center justify-center z-40">
-              <div className="w-8 h-8 border-2 border-rose-500 border-t-transparent rounded-full animate-spin"></div>
-            </div>
-          )}
+        {loading && (
+          <div className="absolute inset-0 bg-slate-950/40 backdrop-blur-xs flex items-center justify-center z-40 pointer-events-none">
+            <div className="w-8 h-8 border-2 border-rose-500 border-t-transparent rounded-full animate-spin"></div>
+          </div>
+        )}
 
+        <AnimatePresence mode="wait">
           {/* Tab Content: Analytics */}
-          {activeTab === 'analytics' && stats && (
+          {activeTab === 'analytics' && (
             <motion.div 
               key="analytics"
               initial={{ opacity: 0, y: 15 }}
@@ -1203,6 +1206,12 @@ export default function AdminView({ currentUser, allRequests, onRefreshRequests 
               exit={{ opacity: 0 }}
               className="space-y-6"
             >
+              {!stats ? (
+                <div className="bg-slate-900 border border-slate-800 rounded-2xl p-12 text-center text-slate-400 font-mono text-xs">
+                  Loading platform analytics...
+                </div>
+              ) : (
+                <>
               {/* Stats Numerical Bento Grid */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 {[
@@ -1281,6 +1290,8 @@ export default function AdminView({ currentUser, allRequests, onRefreshRequests 
                 </div>
 
               </div>
+                </>
+              )}
             </motion.div>
           )}
 
@@ -2667,6 +2678,7 @@ export default function AdminView({ currentUser, allRequests, onRefreshRequests 
           {/* ========================================================================= */}
           {activeTab === 'features' && (
             <motion.div
+              key="features"
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
